@@ -1,0 +1,5 @@
+mypy
+pycache
+pylint
+pytest
+sphinxcontrib
