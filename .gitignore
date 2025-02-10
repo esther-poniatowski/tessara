@@ -1,0 +1,15 @@
+# gitignore file for tessara
+# --------------------------
+
+# Temporary files
+*.tmp
+*.temp
+
+# MacOS
+.DS_Store
+
+# Python Cache
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache

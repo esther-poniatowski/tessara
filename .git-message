@@ -1,0 +1,16 @@
+pref():
+###################################################
+
+######################################################################
+# | Prefix    | Description                               |
+# | --------- | ----------------------------------------- |
+# | chore     | Initial setup or environmental tasks      |
+# | feat      | Basic feature implementation              |
+# | test      | Initial tests for the feature             |
+# | feat      | Extensions or improvements to the feature |
+# | fix       | Bug fixes related to the feature          |
+# | docs      | Documentation updates                     |
+# | style     | Styling improvements                      |
+# | refactor  | Code refactoring                          |
+# | test      | Final tests and validations               |
+# | chore     | Final cleanup before pull request         |
