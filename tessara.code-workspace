@@ -1,0 +1,165 @@
+// Workspace-Specific Settings for Tessara
+{
+	// Folders Included in the Workspace
+	"folders": [
+		{
+			// Project
+				"name": "tessara",
+				"path": "."
+			}
+	],
+
+	// Workspace Settings
+	"settings": {
+		// Python Environment
+		"python.defaultInterpreterPath": "${userHome}/miniconda3/envs/tessara/bin/python",
+		"python.terminal.activateEnvironment": true,
+		"terminal.integrated.inheritEnv": false, // user setting, here to remember if troubleshooting
+
+		// View and Layout
+		"workbench.editor.closeEmptyGroups": false,
+		"workbench.editor.openSideBySideDirection": "right",
+		"workbench.editor.openPositioning": "last",
+
+		// Editor Guides and Wrapping
+		"editor.lineNumbers": "on",
+		"editor.rulers": [100],
+		"editor.wordWrap": "off", // avoid visual wrapping
+		"rewrap.wrappingColumn": 100,
+		"rewrap.wholeComment": false,
+		"rewrap.autoWrap.enabled": true,
+
+		// File Explorer
+		"files.exclude": {
+			"**/.git": false, // show .git folder
+			"**/.DS_Store": true,
+			"**/.pytest_cache": true,
+			"**/__pycache__": true,
+			"**/.mypy_cache": true
+		},
+
+		// Search
+		"search.exclude": {
+			"**/.git": true,
+			"**/.DS_Store": true,
+			"**/.pytest_cache": true,
+			"**/__pycache__": true,
+			"**/.mypy_cache": true,
+			"**/docs/build": true,
+			"archive": true,
+		},
+
+		// Copilot
+		"github.copilot.enable": {
+			"*": true,
+			"python": true,
+			"restructuredtext": true,
+			"plaintext": true,
+			"markdown": true,
+			"yaml": true,
+			"json": true,
+			"ini": true,
+			"shellscript": true,
+			"gitignore": true,
+			"git": true,
+		},
+
+		// Formatting
+		"files.trimTrailingWhitespace": true, // remove trailing white spaces on save
+		"files.insertFinalNewline": true, // at least one line at the end of the file
+		"files.trimFinalNewlines": true, // at most one line at the end of the file
+		"[python]": {
+			"editor.defaultFormatter": "ms-python.black-formatter",
+			"editor.formatOnSave": true
+		},
+		// provide black configuration file
+		"black-formatter.args": ["--config", "./config/tools/black.toml"],
+
+		// Linting
+		"pylint.lintOnChange": true, // user setting, here to remember to activate
+		// provide pylint configuration file
+		"pylint.args": ["--rcfile=config/tools/pylintrc.ini"],
+
+		// Type Checking
+		// provide mypy configuration file
+		"mypy-type-checker.args": ["--config-file=./config/tools/mypy.ini"],
+		"mypy-type-checker.ignorePatterns": [
+			"**/docs/**",
+			"**/docs/*.py",
+			"**/docs/**/*.py"
+		],
+
+		// Spell Checker
+		"cSpell.enabled": true,
+		"cSpell.customDictionaries": {
+			"meandra": {"name": "tessara", "path": "./config/dictionaries/tessara.txt"},
+			"python": {"name": "python", "path": "./config/dictionaries/python.txt"},
+			"tools": {"name": "tools", "path": "./config/dictionaries/tools.txt"},
+		},
+
+		// Documentation
+		"restructuredtext.linter.disabledLinters": ["doc8", "rstcheck", "rst-lint"],
+		"esbonio.server.enabled": true,
+		"esbonio.server.enabledInPyFiles": true,
+		"esbonio.server.excludedModules": [],
+		"esbonio.sphinx.confDir": "docs/source",
+		"esbonio.sphinx.srcDir": "docs/source",
+		"esbonio.sphinx.builderName": "html",
+
+		// Testing
+		"python.testing.pytestEnabled": false, // disable built-in test runner
+		"python.testing.unittestEnabled": false, // disable built-in test runner
+		"pythonTestExplorer.testFramework": "pytest", // use pytest as the test framework
+		"python.testing.pytestArgs": ["tests"], // specify the test directory
+
+	},
+
+	// Debugging Configurations
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Python Debugger: Current File",
+				"type": "debugpy",
+				"request": "launch",
+				"program": "${file}",
+				"console": "integratedTerminal"
+			}
+    	]
+	},
+
+	// Recommended Extensions
+	"extensions": {
+		"recommendations": [
+			// Core Python
+			"ms-python.vscode-pylance",
+			"github.copilot",
+			// Debugging
+			"ms-python.debugpy",
+			// Testing
+			"ms-vscode.test-adapter-converter",
+			"hbenl.vscode-test-explorer",
+			"ms-python.python-test-adapter",
+			"littlefoxteam.vscode-python-test-adapter",
+			// Formatting
+			"ms-python.black-formatter",
+			"stkb.rewrap",
+			// Linting
+			"ms-python.pylint",
+			// Type Checking
+			"ms-python.mypy-type-checker",
+			// Documentation
+			"lextudio.restructuredtext-pack",
+			"lextudio.restructuredtext",
+			"trond-snekvik.simple-rst",
+			"leonhard-s.python-sphinx-highlighting",
+			"leonhard-s.python-sphinx-highlight",
+			"swyddfa.esbonio",
+			"njpwerner.autodocstring",
+			"noahsyn10.pydoctestbtn",
+			// Miscellaneous
+			"streetsidesoftware.code-spell-checker",
+			"wayou.vscode-todo-highlight",
+		]
+	}
+}
