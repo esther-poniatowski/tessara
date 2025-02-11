@@ -1,5 +1,12 @@
+docstrings
+hasattr
+isinstance
 mypy
+numpydoc
 pycache
 pylint
 pytest
+pyyaml
+repr
 sphinxcontrib
+staticmethod
