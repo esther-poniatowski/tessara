@@ -1,0 +1,16 @@
+# Archive Log
+
+## Archive Details
+
+- Date of archival: [YYYY-MM-DD]
+- Last commit hash on `main`: [git log -1 --pretty=format:%H]
+
+## Reason for Archival
+
+[Examples: "Superseded by newer version", "Experimental feature not pursued"]
+
+## Contents
+
+
+- [File] (origin: [path/to/file])
+  - [... Notes ...]
