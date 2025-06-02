@@ -1,0 +1,124 @@
+// =================================================================================================
+// VS Code Workspace Settings for Tessara
+//
+// Project-specific preferences for editor behavior and development tooling.
+//
+// General Sections
+// ----------------
+// - Editor Layout and Behavior
+// - File Explorer and Exclusions
+// - Environment and Terminal
+//
+// Tool Configuration
+// ------------------
+// - Spell Checking              : CSpell
+// - Formatting                  : Black, Rewrap
+// - Linting                     : Pylint
+// - Static Type Checking        ; Mypy
+// - Documentation               : Sphinx, reStructuredText, Esbonio
+// - Testing                     : Pytest
+// - Adaptive Language Assistance: GitHub Copilot
+// =================================================================================================
+{
+  // --- Editor Layout and Behavior ----------------------------------------------------------------
+  "workbench.editor.closeEmptyGroups": false,
+  "workbench.editor.openSideBySideDirection": "right",
+  "workbench.editor.openPositioning": "last",
+  "editor.lineNumbers": "on",
+  "editor.rulers": [100],
+  "editor.wordWrap": "off",
+
+  // --- File Explorer and Exclusions --------------------------------------------------------------
+  "files.exclude": {
+    "**/.git": false,
+    "**/.DS_Store": true,
+    "**/.pytest_cache": true,
+    "**/__pycache__": true,
+    "**/.mypy_cache": true
+  },
+  "search.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/.pytest_cache": true,
+    "**/__pycache__": true,
+    "**/.mypy_cache": true,
+    "**/docs/build": true,
+    "archive": true
+  },
+
+  // --- Environment and Terminal ------------------------------------------------------------------
+  "python.defaultInterpreterPath": "${userHome}/miniconda3/envs/tessara/bin/python",
+  "python.terminal.activateEnvironment": true,
+
+
+  // --- Spell Checking ----------------------------------------------------------------------------
+  "cSpell.enabled": true,
+  "cSpell.customDictionaries": {
+    "project": {
+      "name": "project",
+      "path": "./config/dictionaries/project.txt"
+    },
+    "python": {
+      "name": "python",
+      "path": "./config/dictionaries/python.txt"
+    },
+    "tools": {
+      "name": "tools",
+      "path": "./config/dictionaries/tools.txt"
+    }
+  },
+
+  // --- Formatting --------------------------------------------------------------------------------
+  "rewrap.wrappingColumn": 100,
+  "rewrap.wholeComment": false,
+  "rewrap.autoWrap.enabled": true,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true
+  },
+  "black-formatter.args": ["--config", "./config/tools/black.toml"],
+
+  // --- Linting -----------------------------------------------------------------------------------
+  "pylint.args": ["--rcfile=config/tools/pylintrc.ini"],
+
+  // --- Static Type Checking ----------------------------------------------------------------------
+  "mypy-type-checker.args": ["--config-file=./config/tools/mypy.ini"],
+  "mypy-type-checker.ignorePatterns": [
+    "**/docs/**",
+    "**/docs/*.py",
+    "**/docs/**/*.py"
+  ],
+
+  // --- Documentation -----------------------------------------------------------------------------
+  "restructuredtext.linter.disabledLinters": ["doc8", "rstcheck", "rst-lint"],
+  "esbonio.server.enabled": true,
+  "esbonio.server.enabledInPyFiles": true,
+  "esbonio.server.excludedModules": [],
+  "esbonio.sphinx.confDir": "docs/source",
+  "esbonio.sphinx.srcDir": "docs/source",
+  "esbonio.sphinx.builderName": "html",
+
+  // --- Testing -----------------------------------------------------------------------------------
+  "python.testing.pytestEnabled": false,
+  "python.testing.unittestEnabled": false,
+  "pythonTestExplorer.testFramework": "pytest",
+  "python.testing.pytestArgs": ["tests"],
+
+  // --- Adaptive Language Assistance --------------------------------------------------------------
+  "github.copilot.enable": {
+    "*": true,
+    "python": true,
+    "restructuredtext": true,
+    "plaintext": true,
+    "markdown": true,
+    "yaml": true,
+    "json": true,
+    "ini": true,
+    "shellscript": true,
+    "gitignore": true,
+    "git": true
+  },
+}
