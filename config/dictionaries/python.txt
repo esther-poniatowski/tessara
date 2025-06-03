@@ -1,3 +1,9 @@
+# ======================================
+# Dictionary for CSpell Extension
+# Topics:
+# - Python names (functions, modules)
+# - Programming concepts
+# ======================================
 docstrings
 hasattr
 isinstance

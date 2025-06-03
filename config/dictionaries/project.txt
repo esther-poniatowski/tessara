@@ -1,1 +1,7 @@
+# ======================================
+# Dictionary for CSpell Extension
+# Topics:
+# - Project-specific names
+# - Project-specific concepts
+# ======================================
 tessara
