@@ -4,13 +4,13 @@ pref():
 ######################################################################
 # | Prefix    | Description                               |
 # | --------- | ----------------------------------------- |
-# | chore     | Initial setup or environmental tasks      |
-# | feat      | Basic feature implementation              |
-# | test      | Initial tests for the feature             |
-# | feat      | Extensions or improvements to the feature |
-# | fix       | Bug fixes related to the feature          |
+# | chore     | Setup, cleanup, environment tasks         |
+# | config    | Configuration settings for the project    |
+# | feat      | Feature implementation                    |
+# | test      | Tests and validations                     |
+# | fix       | Corrections, bug fixes                    |
 # | docs      | Documentation updates                     |
-# | style     | Styling improvements                      |
-# | refactor  | Code refactoring                          |
-# | test      | Final tests and validations               |
-# | chore     | Final cleanup before pull request         |
+# | style     | Styling and formatting improvements       |
+# | refactor  | Code or structure refactoring             |
+# | merge     | Merge a branch                            |
+# | revert    | Revert a commit                           |
