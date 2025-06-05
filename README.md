@@ -1,104 +1,182 @@
 # Tessara
 
-**Tessara** is a Python package for defining and managing parameters as structured objects with constraints, rules, and modular compositions. It provides a flexible framework for parameter validation, ensuring correctness, consistency, and composability in complex configurations.
+[![Conda](https://img.shields.io/badge/conda-eresthanaconda--channel-blue)](#installation)
+[![Maintenance](https://img.shields.io/maintenance/yes/2025)]()
+[![Last Commit](https://img.shields.io/github/last-commit/esther-poniatowski/architekta)](https://github.com/esther-poniatowski/architekta/commits/main)
+[![Python](https://img.shields.io/badge/python-supported-blue)](https://www.python.org/)
+[![License: GPL](https://img.shields.io/badge/License-GPL-yellow.svg)](https://opensource.org/licenses/GPL-3.0)
 
-## Key Features
+Parameter management system for declarative definition, constraint enforcement, and modular composition.
 
-- **Structured Parameters**: Define parameters as objects with validation constraints, through predefined and custom rules.
-- **Parameter Sets**: Group parameters into modular, composable collections.
-- **Sweeping Mechanism**: Define parameter sweeps for systematic exploration of configurations.
-- **Hierarchical and MOdular Composition**: Merge and override parameter sets for flexibility.
-- **Flexible Value Setting**: Define default values at the definition time or runtime values, possibly from configuration files.
-- **Validation**: Enforce constraints on sigle parameters and across parameters, to ensure consistency and relations.
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Documentation](#documentation)
+- [Support](#support)
+- [Contributing](#contributing)
+- [Acknowledgments](#acknowledgments)
+- [License](#license)
+
+## Overview
+
+### Motivations
+
+Complex workflows or models often rely on numerous interdependent parameters that must satisfy
+structural, logical, and relational constraints. As configurations grow in size and complexity,
+manual parameter handling becomes error-prone, difficult to validate, and hard to modularize across
+components.
+
+### Advantages
+
+Tessara introduces a parameter management framework for manipulating
+parameters sets as structured objects with validation rules and modular compositions.
+
+---
+
+## Features
+
+- [ ] **Structured declarative specifications**: Define parameters as typed objects with validation
+  constraints, using predefined and custom rules.
+- [ ] **Direct Parameter Access**: Retrieve parameters and nested fields using dot notation for
+  clarity and uniformity.
+- [ ] **Modular composition of parameter sets**: Organize parameters into reusable and composable
+  collections that can be merged or overridden.
+- [ ] **Flexible Value Setting**: Define default values at the definition time or runtime values.
+- [ ] **Schema Validation**: Enforce constraints on single parameters, levering type hints for
+  compact and readable definitions.
+- [ ] **Relational Validation**: Enforce consistency across parameters by defining relational rules.
+- [ ] **Sweeping exploration**: Define parameter sweeps for systematic experimentation and
+  controlled variability.
+
+---
 
 ## Installation
 
-```sh
-pip install tessara
+To install the package and its dependencies, use one of the following methods:
+
+### Using Pip Installs Packages
+
+Install the package from the GitHub repository URL via `pip`:
+
+```bash
+pip install git+https://github.com/esther-poniatowski/tessara.git
 ```
+
+### Using Conda
+
+Install the package from the private channel eresthanaconda:
+
+```bash
+conda install tessara -c eresthanaconda
+```
+
+### From Source
+
+1. Clone the repository:
+
+      ```bash
+      git clone https://github.com/esther-poniatowski/tessara.git
+      ```
+
+2. Create a dedicated virtual environment:
+
+      ```bash
+      cd tessara
+      conda env create -f environment.yml
+      ```
+
+---
 
 ## Usage
 
-### Defining Parameters
+### Command Line Interface (CLI)
 
-```python
-from tessara.core.parameters import Param
-from tessara.validation.rules import TypeRule, RangeRule
+To display the list of available commands and options:
 
-param = Param(
-    default=5,
-    rules=[
-        TypeRule(int),
-        RangeRule(gt=0, le=10)
-    ]
-)
-
-print(param.get_value())  # Output: 5
-param.set_value(7)        # Valid assignment
+```sh
+tessara --help
 ```
 
-### Defining Parameter Sweeps
+### Programmatic Usage
+
+To use the package programmatically in Python:
 
 ```python
-from tessara.core.parameters import SweepParam
-
-sweep_param = SweepParam(sweep_values=[1, 2, 3, 4])
-print(sweep_param.get_sweep_values())  # Output: [1, 2, 3, 4]
+import tessara
 ```
 
-### Managing Parameter Sets
+---
 
-```python
-from tessara.core.structures import ParameterSet
+## Configuration
 
-params = ParameterSet(
-    learning_rate=Param(default=0.01),
-    batch_size=Param(default=32)
-)
+### Environment Variables
 
-print(params.get_value("learning_rate"))  # Output: 0.01
+|Variable|Description|Default|Required|
+|---|---|---|---|
+|`VAR_1`|Description 1|None|Yes|
+|`VAR_2`|Description 2|`false`|No|
+
+### Configuration File
+
+Configuration options are specified in YAML files located in the `config/` directory.
+
+The canonical configuration schema is provided in [`config/default.yaml`](config/default.yaml).
+
+```yaml
+var_1: value1
+var_2: value2
 ```
 
-### Applying Validation Rules
+---
 
-```python
-from tessara.validation.validator import Validator
+## Documentation
 
-validator = Validator(params)
-if validator.validate():
-    print("Validation passed.")
-else:
-    print("Validation failed.")
-```
+- [User Guide](https://esther-poniatowski.github.io/tessara/guide/)
+- [API Documentation](https://esther-poniatowski.github.io/tessara/api/)
 
-## Key Components
+> [!NOTE]
+> Documentation can also be browsed locally from the [`docs/`](docs/) directory.
 
-### `parameters`
+## Support
 
-- **`Param`**: Defines an individual parameter with validation constraints.
-- **`SweepParam`**: Defines a parameter representing a sweep over multiple values.
+**Issues**: [GitHub Issues](https://github.com/esther-poniatowski/tessara/issues)
 
-### `structures`
+**Email**: `{{ contact@example.com }}`
 
-- **`ParameterSet`**: Manages a collection of parameters.
+---
 
-### `validation.rules`
-- **`Rule`**: Base class for validation rules.
-- **`TypeRule`**: Ensures a value matches a required type.
-- **`RangeRule`**: Ensures a value is within a specified range.
-- **`PatternRule`**: Checks if a value matches a regex pattern.
-- **`OptionRule`**: Validates against a set of allowed options.
-- **`CustomRule`**: Allows custom validation functions.
-- **`MultiValueRule`**: Validates relations between multiple parameters.
+## Contributing
 
-### `validation.validator`
-- **`Validator`**: Applies validation rules to parameters and parameter sets.
-- **`Checker`**: Encapsulates a single validation process.
-- **`ValidationRecorder`**: Tracks validation reports and errors.
+Please refer to the [contribution guidelines](CONTRIBUTING.md).
 
+---
+
+## Acknowledgments
+
+### Authors & Contributors
+
+**Author**: @esther-poniatowski
+
+**Contact**: `{{ contact@example.com }}`
+
+For academic use, please cite using the GitHub "Cite this repository" feature to
+generate a citation in various formats.
+
+Alternatively, refer to the [citation metadata](CITATION.cff).
+
+### Third-Party Dependencies
+
+- **[Library A](link)** - Purpose
+- **[Library B](link)** - Purpose
+
+---
 
 ## License
 
-This project is licensed under the GNU License.
-
-
+This project is licensed under the terms of the [GNU General Public License v3.0](LICENSE).
