@@ -9,6 +9,7 @@ pref():
 # | feat      | Feature implementation                    |
 # | test      | Tests and validations                     |
 # | fix       | Corrections, bug fixes                    |
+# | perf      | Performance improvements                  |
 # | docs      | Documentation updates                     |
 # | style     | Styling and formatting improvements       |
 # | refactor  | Code or structure refactoring             |

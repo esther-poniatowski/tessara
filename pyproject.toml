@@ -52,3 +52,25 @@ where = ["src"]
 
 [project.scripts]
 tessara = "tessara.cli:main"
+
+
+# --- Versioning -----------------------------------------------------------------------------------
+
+[tool.semantic_release]
+branch = "main"
+
+version_toml = [
+	"pyproject.toml:project.version",
+	"CITATION.cff:version"
+]
+version_variables = ["src/tessara/__version__.py:__version__"]
+
+commit_parser = "angular"
+major_versions = ["BREAKING CHANGE"]
+minor_versions = ["feat"]
+patch_versions = ["fix", "perf", "refactor"]
+
+tag_format = "v{version}"
+
+[tool.semantic_release.changelog]
+changelog_file = "docs/CHANGELOG.md"
