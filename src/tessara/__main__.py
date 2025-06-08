@@ -1,16 +1,16 @@
 """
-Command-line entry point for the `tessara` package.
+Entry point for the `tessara` package, invoked as a module.
 
 Usage
 -----
-To invoke the package::
+To launch the command-line interface, execute::
 
     python -m tessara
 
 
 See Also
 --------
-tessara.cli: Command-line interface module for the package.
+tessara.cli: Module implementing the application's command-line interface.
 """
 from .cli import app
 
