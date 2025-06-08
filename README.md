@@ -2,7 +2,7 @@
 
 [![Conda](https://img.shields.io/badge/conda-eresthanaconda--channel-blue)](#installation)
 [![Maintenance](https://img.shields.io/maintenance/yes/2025)]()
-[![Last Commit](https://img.shields.io/github/last-commit/esther-poniatowski/architekta)](https://github.com/esther-poniatowski/architekta/commits/main)
+[![Last Commit](https://img.shields.io/github/last-commit/esther-poniatowski/tessara)](https://github.com/esther-poniatowski/tessara/commits/main)
 [![Python](https://img.shields.io/badge/python-supported-blue)](https://www.python.org/)
 [![License: GPL](https://img.shields.io/badge/License-GPL-yellow.svg)](https://opensource.org/licenses/GPL-3.0)
 
