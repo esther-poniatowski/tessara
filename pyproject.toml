@@ -51,4 +51,4 @@ where = ["src"]
 # --- CLI Entry Points -----------------------------------------------------------------------------
 
 [project.scripts]
-tessara = "tessara.cli:main"
+tessara = "tessara.cli:app"
