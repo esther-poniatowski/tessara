@@ -33,6 +33,8 @@ from importlib.metadata import version, PackageNotFoundError
 import platform
 
 try:
+    if __package__ is None: # erroneous script execution
+        raise PackageNotFoundError
     __version__ = version(__package__)
 except PackageNotFoundError:
     __version__ = "0.0.0+unknown"
