@@ -56,15 +56,15 @@
   "cSpell.customDictionaries": {
     "project": {
       "name": "project",
-      "path": "./config/dictionaries/project.txt"
+      "path": "${workspaceFolder}/config/dictionaries/project.txt"
     },
     "python": {
       "name": "python",
-      "path": "./config/dictionaries/python.txt"
+      "path": "${workspaceFolder}/config/dictionaries/python.txt"
     },
     "tools": {
       "name": "tools",
-      "path": "./config/dictionaries/tools.txt"
+      "path": "${workspaceFolder}/config/dictionaries/tools.txt"
     }
   },
 
@@ -79,13 +79,13 @@
     "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.formatOnSave": true
   },
-  "black-formatter.args": ["--config", "./config/tools/black.toml"],
+  "black-formatter.args": ["--config", "${workspaceFolder}/config/tools/black.toml"],
 
   // --- Linting -----------------------------------------------------------------------------------
-  "pylint.args": ["--rcfile=config/tools/pylintrc.ini"],
+  "pylint.args": ["--rcfile=${workspaceFolder}/configtools/pylintrc.ini"],
 
   // --- Static Type Checking ----------------------------------------------------------------------
-  "mypy-type-checker.args": ["--config-file=./config/tools/mypy.ini"],
+  "mypy-type-checker.args": ["--config-file=${workspaceFolder}/config/tools/mypy.ini"],
   "mypy-type-checker.ignorePatterns": [
     "**/config/**",
     "**/conf.py",

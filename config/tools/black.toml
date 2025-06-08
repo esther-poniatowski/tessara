@@ -20,7 +20,7 @@
 #			"editor.defaultFormatter": "ms-python.black-formatter",
 #			"editor.formatOnSave": true
 #		},
-#		"black-formatter.args": ["--config", "./config/tools/black.toml"],
+#		"black-formatter.args": ["--config", "${workspaceFolder}/config/tools/black.toml"],
 # }
 # ```
 #
