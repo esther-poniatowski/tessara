@@ -13,17 +13,19 @@ ParamBinder
 ParamComposer
     Merge a set of ParameterSets into a single ParameterSet.
 ParamSweeper
-    Sweep over a grid of parameters. FIXME: To be refined. See below.
+    Sweep over a grid of parameters with iterator/generator support.
 Config
     Protocol for configuration objects used to pass runtime values to the parameters.
 
 """
 import inspect
 from itertools import product
-from typing import Any, List, Protocol, Callable
+from pathlib import Path
+from typing import Any, List, Protocol, Callable, Union
 
-from tessara.core.parameters import ParameterSet, ParamGrid
-from tessara.errors.validation import UnknownParameterError
+from tessara.core.parameters import ParameterSet, ParamGrid, Param
+from tessara.core.errors.handling import UnknownParameterError
+from tessara.handling.config_io import load_yaml
 
 
 # --- Parameter Binding ----------------------------------------------------------------------------
@@ -57,12 +59,12 @@ class ParamAssigner:
     """
     Assign specific values to a set of parameters.
 
+    Supports loading configuration from YAML files, OmegaConf objects, or dictionaries.
+
     Attributes
     ----------
     params : ParameterSet
         Parameters to bind to a configuration.
-    config : Config
-        Configuration values to apply to the parameters.
 
     Methods
     -------
@@ -70,44 +72,207 @@ class ParamAssigner:
         Set the value of an existing parameter by its name.
     apply_config(config: Config)
         Apply runtime configuration values to the parameters.
+    from_yaml(path: str | Path) -> ParamAssigner
+        Load configuration from a YAML file.
+    from_dict(data: dict) -> ParamAssigner
+        Apply configuration from a dictionary.
 
+    Examples
+    --------
+    Basic usage:
+
+    >>> params = ParameterSet(lr=Param(default=0.01), epochs=Param(default=100))
+    >>> assigner = ParamAssigner(params)
+    >>> assigner.set('lr', 0.001)
+    >>> params.lr
+    0.001
+
+    Load from YAML file:
+
+    >>> assigner = ParamAssigner(params).from_yaml('config.yaml')
+
+    Load from dictionary:
+
+    >>> assigner = ParamAssigner(params).from_dict({'lr': 0.001, 'epochs': 50})
     """
+
     def __init__(self, params: ParameterSet) -> None:
         self.params = params
 
-    def set(self, name: str, value: Any):
+    def set(self, name: str, value: Any) -> "ParamAssigner":
         """
         Set the value of an existing parameter by its name.
+
+        Parameters
+        ----------
+        name : str
+            Parameter name (supports dot notation for nested parameters).
+        value : Any
+            Value to set.
+
+        Returns
+        -------
+        ParamAssigner
+            Self, for method chaining.
+
+        Raises
+        ------
+        UnknownParameterError
+            If the parameter does not exist.
 
         Warning
         -------
         If a value is already set, the initial value will be overridden.
         """
-        if name in self.params:
-            self.params[name].value = value
+        # Handle dot notation for nested parameters
+        if "." in name:
+            parts = name.split(".")
+            obj = self.params
+            for part in parts[:-1]:
+                if part not in obj.data:
+                    raise UnknownParameterError(f"No parameter '{part}' in path '{name}'.")
+                obj = obj.data[part]
+                if not isinstance(obj, ParameterSet):
+                    raise UnknownParameterError(f"'{part}' is not a nested ParameterSet in '{name}'.")
+            final_name = parts[-1]
+            if final_name not in obj.data:
+                raise UnknownParameterError(f"No parameter '{final_name}' in the ParameterSet.")
+            obj.data[final_name].set(value)
+        elif name in self.params:
+            self.params[name].set(value)
         else:
             raise UnknownParameterError(f"No parameter '{name}' in the ParameterSet.")
+        return self
 
-    def apply_config(self, config: Config) -> None:
+    def apply_config(
+        self,
+        config: Config,
+        recursive: bool = True,
+        strict: bool = False,
+    ) -> "ParamAssigner":
         """
         Apply runtime configuration values to the parameters.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         config : Config
-            Configuration values to apply.
+            Configuration values to apply (dict-like object).
+        recursive : bool, default True
+            If True, recursively apply nested dictionaries to nested ParameterSets.
+
+        Returns
+        -------
+        ParamAssigner
+            Self, for method chaining.
 
         Notes
         -----
         Parameters are set by querying the configuration object and retrieving the values for the
         relevant keys which match the parameter names.
-
-        When a parameter is matched, its value is set in the Param object using the `set`
-        method, which performs broadcast validation on the value.
         """
-        matching_keys = self.params.keys() & config.keys()
+        self._apply_config_recursive(self.params, config, recursive, strict, path="")
+        return self
+
+    def _apply_config_recursive(
+        self,
+        params: ParameterSet,
+        config: Config,
+        recursive: bool,
+        strict: bool,
+        path: str,
+    ) -> None:
+        """Recursively apply configuration to nested ParameterSets."""
+        param_keys = set(params.keys())
+        config_keys = set(config.keys())
+        if strict:
+            unknown = config_keys - param_keys
+            if unknown:
+                paths = [
+                    f"{path}.{key}" if path else key
+                    for key in sorted(unknown)
+                ]
+                raise UnknownParameterError(
+                    f"Unknown parameter(s) in config: {', '.join(paths)}"
+                )
+
+        matching_keys = param_keys & config_keys
         for key in matching_keys:
-            self.params[key].value = config[key]
+            target = params.data[key]
+            value = config[key]
+            if recursive and isinstance(target, ParameterSet) and isinstance(value, dict):
+                # Recursively apply to nested ParameterSet
+                next_path = f"{path}.{key}" if path else key
+                self._apply_config_recursive(target, value, recursive, strict, next_path)
+            elif hasattr(target, "set"):
+                target.set(value)
+            else:
+                params.data[key] = value
+
+    def from_yaml(
+        self,
+        path: Union[str, Path],
+        prefer_omegaconf: bool = True,
+        strict: bool = False,
+    ) -> "ParamAssigner":
+        """
+        Load configuration from a YAML file and apply to parameters.
+
+        Parameters
+        ----------
+        path : str or Path
+            Path to the YAML configuration file.
+
+        Returns
+        -------
+        ParamAssigner
+            Self, for method chaining.
+
+        Raises
+        ------
+        ImportError
+            If PyYAML is not installed.
+        FileNotFoundError
+            If the YAML file does not exist.
+
+        Examples
+        --------
+        >>> assigner = ParamAssigner(params).from_yaml('config.yaml')
+
+        With OmegaConf (if installed):
+
+        >>> assigner = ParamAssigner(params).from_yaml('config.yaml')
+        # Automatically uses OmegaConf if available for variable interpolation
+
+        Notes
+        -----
+        If OmegaConf is installed, it will be used for loading (supports variable
+        interpolation and merging). Otherwise, falls back to PyYAML.
+        """
+        config = load_yaml(path, prefer_omegaconf=prefer_omegaconf)
+        return self.from_dict(config, strict=strict)
+
+    def from_dict(self, data: dict, strict: bool = False) -> "ParamAssigner":
+        """
+        Apply configuration from a dictionary.
+
+        Parameters
+        ----------
+        data : dict
+            Dictionary of parameter names to values.
+
+        Returns
+        -------
+        ParamAssigner
+            Self, for method chaining.
+
+        Examples
+        --------
+        >>> assigner = ParamAssigner(params).from_dict({
+        ...     'lr': 0.001,
+        ...     'model': {'hidden_size': 256}
+        ... })
+        """
+        return self.apply_config(data, strict=strict)
 
 
 # --- Filtering ------------------------------------------------------------------------------------
@@ -177,10 +342,13 @@ class ParamBinder:
                 - `kwargs` (dict): Keyword arguments.
         """
         sig = inspect.signature(func)
-        filtered_params = {k: v for k, v in self.params if k in sig.parameters}
-        # FIXME: Ensure the ParameterSet can be traversed as a dictionary returning raw values
-        # rather than Param objects
-        bound_args = sig.bind(**filtered_params)
+        # Extract values (not Param objects) for parameters matching the function signature
+        filtered_params = {
+            k: self.params.get(k)
+            for k in self.params.data
+            if k in sig.parameters
+        }
+        bound_args = sig.bind_partial(**filtered_params)
         return bound_args
 
     def call(self, func: Callable) -> Any:
@@ -389,55 +557,158 @@ class ParamComposer:
 
 # --- Sweeping -------------------------------------------------------------------------------------
 
-"""
-Separation of Sweep Functionality:
-TODO: In generate_sweep_params, instead of returning a list, should it return a generator /
-iterator? What would be the functional difference and the benefits or drawbacks ?
-TODO: (In the future, not a priority) Here, the default combinations of sweeping values is a
-cartesian product. Add support for more refined combinations, where only certain associations are
-relevant.
-TODO: Modify the generate_params method to filter out sweep-specific or internal attributes before
-passing the remaining attributes to the base parameter constructor. This can be achieved by
-explicitly constructing a dictionary of attributes to forward (e.g. using a whitelist of attribute
-names or by excluding known keys such as sweep_values and _value).
-TODO: Determine whether the sweeping functionality should be included in the Grid class.
-"""
+from typing import Iterator, Generator
+
 
 class ParamSweeper:
     """
-    Sweep over a grid of parameters.
+    Sweep over a grid of parameters with iterator/generator support.
+
+    Generates all combinations of parameter values from ParamGrid objects
+    using cartesian product. Supports both eager (list) and lazy (generator)
+    evaluation.
+
+    Attributes
+    ----------
+    params : ParameterSet
+        Parameter set containing both static Params and ParamGrid objects.
 
     Methods
     -------
-    generate_sweep_grid() -> List[ParameterSet]
-        Generate the combinations of parameters to sweep over.
+    generate() -> Generator[ParameterSet, None, None]
+        Lazily generate parameter combinations one at a time.
+    generate_all() -> List[ParameterSet]
+        Eagerly generate all parameter combinations as a list.
+    __iter__() -> Iterator[ParameterSet]
+        Make the sweeper iterable (uses generate()).
+    __len__() -> int
+        Return the total number of combinations.
+
+    Examples
+    --------
+    Basic usage with a ParameterSet:
+
+    >>> params = ParameterSet(
+    ...     lr=ParamGrid(Param(), sweep_values=[0.01, 0.001]),
+    ...     epochs=Param(default=100),
+    ... )
+    >>> sweeper = ParamSweeper(params)
+    >>> for combo in sweeper:
+    ...     print(combo.to_dict(values_only=True))
+    {'lr': 0.01, 'epochs': 100}
+    {'lr': 0.001, 'epochs': 100}
+
+    Multiple sweep parameters (cartesian product):
+
+    >>> params = ParameterSet(
+    ...     lr=ParamGrid(Param(), sweep_values=[0.01, 0.001]),
+    ...     batch_size=ParamGrid(Param(), sweep_values=[32, 64]),
+    ... )
+    >>> sweeper = ParamSweeper(params)
+    >>> len(sweeper)  # 2 * 2 = 4 combinations
+    4
+
+    Notes
+    -----
+    - Parameter names are sorted for deterministic ordering across runs.
+    - The generator pattern allows memory-efficient iteration over large sweeps.
+    - Each generated ParameterSet is a deep copy with the sweep values applied.
     """
-    def generate_sweep_grid(self) -> List[ParameterSet]:
+
+    def __init__(self, params: ParameterSet) -> None:
+        self.params = params
+
+    def _collect_sweep_params(
+        self,
+        params: ParameterSet,
+        prefix: tuple[str, ...] = (),
+    ) -> List[tuple[str, ParamGrid]]:
+        """Collect ParamGrid objects with deterministic ordering."""
+        items: List[tuple[str, ParamGrid]] = []
+        for key in sorted(params.data.keys()):
+            value = params.data[key]
+            if isinstance(value, ParameterSet):
+                items.extend(self._collect_sweep_params(value, prefix + (key,)))
+            elif isinstance(value, ParamGrid):
+                path = ".".join(prefix + (key,))
+                items.append((path, value))
+        return items
+
+    def _set_param_by_path(self, params: ParameterSet, path: str, param: Param) -> None:
+        """Set a Param at a dotted path in a nested ParameterSet."""
+        parts = path.split(".")
+        obj: Any = params
+        for part in parts[:-1]:
+            if isinstance(obj, ParameterSet) and part in obj.data:
+                obj = obj.data[part]
+            else:
+                raise UnknownParameterError(f"No parameter '{path}' in the ParameterSet.")
+        if not isinstance(obj, ParameterSet):
+            raise UnknownParameterError(f"No parameter '{path}' in the ParameterSet.")
+        obj.data[parts[-1]] = param
+
+    def generate(self) -> Generator[ParameterSet, None, None]:
         """
-        Generate the combinations of parameters to sweep over, from all the combinations of
-        ParamGrid values.
+        Lazily generate parameter combinations one at a time.
 
-        Returns
-        -------
-        grid : List[ParameterSet]
-            ParameterSets to sweep over. Each item represents a combination of parameters where:
-
-            - For static parameters, the value is set to the current value (default or set).
-            - For sweeping parameters, the value is set to one the list of values to sweep over.
+        Yields
+        ------
+        ParameterSet
+            A parameter set with one specific combination of sweep values.
+            Static parameters retain their original values.
 
         Notes
         -----
-        All the combinations are generated from the cartesian product of the values in the
-        ParamGrid objects. The static parameters remain fixed across the sweep.
+        This is memory-efficient for large sweeps as it generates
+        combinations on-demand rather than storing them all in memory.
         """
-        sweep_params = {k: p.generate_params() for k, p in self.items() if isinstance(p, ParamGrid)}
-        if not sweep_params: # no sweep parameters -> return a single ParameterSet
-            return [self.copy()]
-        grid = []
-        names, params = zip(*sweep_params.items()) # params: list of lists (of Param instances)
-        for combination in product(*params): # cartesian product of Param instances
-            new_set = self.copy() # copy all parameters to override with new params
-            for k, p in zip(names, combination):
-                new_set[k] = p # replace Param instance (keep all attributes + new value)
-            grid.append(new_set)
-        return grid
+        sweep_items = self._collect_sweep_params(self.params)
+        if not sweep_items:
+            # No sweep parameters -> yield the original set
+            yield self.params.copy()
+            return
+
+        names = [name for name, _ in sweep_items]
+        grids = [grid for _, grid in sweep_items]
+        value_lists = [list(grid.iter_values()) for grid in grids]
+
+        for combination in product(*value_lists):
+            new_set = self.params.copy()
+            for name, value, grid in zip(names, combination, grids):
+                param = grid.make_param(value)
+                self._set_param_by_path(new_set, name, param)
+            yield new_set
+
+    def generate_all(self) -> List[ParameterSet]:
+        """
+        Eagerly generate all parameter combinations as a list.
+
+        Returns
+        -------
+        List[ParameterSet]
+            All parameter combinations. Equivalent to list(self.generate()).
+
+        Notes
+        -----
+        For large sweeps, prefer using generate() or iteration directly
+        to avoid memory issues.
+        """
+        return list(self.generate())
+
+    def __iter__(self) -> Iterator[ParameterSet]:
+        """Make the sweeper iterable."""
+        return self.generate()
+
+    def __len__(self) -> int:
+        """
+        Return the total number of combinations.
+
+        Uses multiplication to avoid generating all combinations.
+        """
+        sweep_items = self._collect_sweep_params(self.params)
+        if not sweep_items:
+            return 1
+        count = 1
+        for _, grid in sweep_items:
+            count *= len(grid.sweep_values)
+        return count

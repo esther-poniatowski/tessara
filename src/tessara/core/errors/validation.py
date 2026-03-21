@@ -236,11 +236,11 @@ class RelationValidationError(ValidationError):
 
     def format_message(self) -> str:
         func_name = self.func.__name__ if hasattr(self.func, "__name__") else repr(self.func)
-        try: # bind values to function signature
-
+        try:  # bind values to function signature
+            bound_args = bind_function_arguments(self.func, *self.args, **self.kwargs)
             formatted_args = ", ".join(f"{k}={v!r}" for k, v in bound_args.arguments.items())
             return f"Values do not satisfy the relation when calling `{func_name}({formatted_args})`."
-        except (TypeError, ValueError,  AttributeError):  # fallback if binding fails
+        except (TypeError, ValueError, AttributeError):  # fallback if binding fails
             return f"Values {self.args or self.kwargs} do not satisfy the relational validation function '{func_name}'."
 
 

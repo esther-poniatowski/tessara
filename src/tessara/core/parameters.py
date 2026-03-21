@@ -2,30 +2,7 @@
 tessara.core.parameters
 =======================
 
-Error Handling:
-TODO: How should the Validator interact with the parameter objects?
-TODO: Implement logging for validation errors.
-
-
-
-ParameterSet Class:
-FIXME: Revisit the implementation of __getattr__ to ensure that nested parameter access (via dotted
-attribute names) is robust. One approach is to perform recursive attribute lookups explicitly on the
-nested Parameter Set objects rather than relying on a single pass that delegates to the superclass.
-TODO: Given that the __getattr__ method is overridden to support dot notation for nested parameter
-access, consider implementing a corresponding __setattr__ method. This would permit assignment using
-dot notation, provided that care is taken to differentiate between attributes of the Parameter Set
-object itself and keys in the underlying data dictionary.
-TODO: Implement a dedicated method (for example, convert) within the Parameter Set class that
-performs the conversion of arbitrary values into parameter instances. This method should encapsulate
-the logic already present in the add method and should be invoked by both __setitem__ and the
-constructor.
-TODO: Consider implementing a ParamAssigner class that encapsulates the logic for binding a set
-of parameters to a specific configuration. This class could be responsible for applying the values
-of the configuration to the parameters, but maybe also validating the parameters, and generating
-sweep grids.
-TODO: Chose whether to access values via self.get(key) or self.data[key]. Encapsulate this logic in
-a dedicated accessor method that documents the intended behavior.
+Core parameter management classes for defining, validating, and organizing parameters.
 
 Classes
 -------
@@ -34,19 +11,56 @@ Param
 ParamGrid
     Define a parameter representing a sweep over multiple values.
 ParameterSet
-    Manage a collection of parameters.
+    Manage a collection of parameters with dot notation access.
+
+Notes
+-----
+- Parameters support validation rules via the `rules` attribute
+- Nested ParameterSets can be accessed using dot notation (e.g., `params.model.lr`)
+- Values can be set with optional strict validation via `param.set(value, strict=True)`
+- Use `param.is_set` to distinguish between "not set" and "explicitly set to None"
 """
 from collections import UserDict
 from collections.abc import Iterable
 from copy import deepcopy
 from typing import Any, Optional, Self, Dict, List, TypeAlias, Tuple
 
-from tessara.errors.validation import (
+from tessara.core.errors.handling import (
     OverrideParameterError,
     UnknownParameterError,
 )
 
-from tessara.validation.rules import SingleValueRule, MultiValueRule
+from tessara.validation.rules import SingleValueRule, MultiValueRule, RuleRegistry, DEFAULT_RULE_REGISTRY
+
+
+class _Unset:
+    """Sentinel class to distinguish 'not set' from 'explicitly set to None'."""
+    _instance = None
+
+    def __new__(cls):
+        # Singleton pattern - same instance survives deepcopy type checks
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __repr__(self):
+        return "<UNSET>"
+
+    def __bool__(self) -> bool:
+        return False
+
+    def __copy__(self):
+        return self
+
+    def __deepcopy__(self, memo):
+        # Return the same singleton instance on deepcopy
+        return self
+
+    def __reduce__(self):
+        return (self.__class__, ())
+
+
+_UNSET = _Unset()
 
 
 class Param:
@@ -118,17 +132,75 @@ class Param:
         default: Optional[Any] = None,
         rules: Optional[Iterable[SingleValueRule]] = None,
     ) -> None:
-        self.value = None  # set at runtime
+        self._value = _UNSET  # sentinel to distinguish "not set" from "set to None"
         self.default = default
-        self.rules = [self.register_rule(rule) for rule in rules] if rules else []
+        self.rules = []  # Initialize first
+        if rules:
+            for rule in rules:
+                self.register_rule(rule)
 
-    def set(self, value: Any) -> None:
-        """Explicit setter method."""
-        self.value = value # call the property setter
+    def set(self, value: Any, strict: bool = False) -> "Param":
+        """
+        Set the parameter value at runtime.
+
+        Parameters
+        ----------
+        value : Any
+            Value to set.
+        strict : bool, default False
+            If True, validate the value against all registered rules before setting.
+            Raises ValidationError if any rule fails.
+
+        Returns
+        -------
+        Param
+            Self, for method chaining.
+
+        Raises
+        ------
+        ValidationError
+            If strict=True and validation fails.
+        """
+        if strict:
+            self.validate_value(value)
+        self._value = value
+        return self
+
+    def validate_value(self, value: Any) -> None:
+        """
+        Validate a value against all registered rules.
+
+        Raises ValidationError on the first failing rule.
+        """
+        if not self.rules:
+            return
+        for rule in self.rules:
+            error = rule.get_error(value)
+            if error is not None:
+                raise error
+
+    @property
+    def value(self) -> Any:
+        """
+        The explicitly set value, or None if not set.
+
+        Note: Use `is_set` to distinguish between "set to None" and "not set".
+        """
+        return None if self._value is _UNSET else self._value
+
+    @property
+    def is_set(self) -> bool:
+        """Return True if the value has been explicitly set (even to None)."""
+        return self._value is not _UNSET
 
     def get(self) -> Any:
-        """Explicit getter method."""
-        return self.value # call the property getter
+        """
+        Retrieve the current value or default.
+
+        Returns the runtime value if explicitly set (even if None),
+        otherwise returns the default value.
+        """
+        return self._value if self._value is not _UNSET else self.default
 
     def register_rule(self, rule: SingleValueRule) -> None:
         """Add a rule to validate the parameter."""
@@ -139,6 +211,66 @@ class Param:
     def copy(self) -> Self:
         """Create a deep copy of the parameter, namely all the rules. Used to set a new value."""
         return deepcopy(self)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize the parameter to a dictionary.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Dictionary representation of the parameter containing:
+            - 'value': Current runtime value (if set)
+            - 'default': Default value (if set)
+            - 'rules': List of rule class names (for documentation, not reconstruction)
+
+        Notes
+        -----
+        Rules are serialized as class names only for documentation purposes.
+        Full rule reconstruction requires additional logic or custom serializers.
+
+        Example
+        -------
+        >>> param = Param(default=10, rules=[TypeRule(int), RangeRule(gt=0)])
+        >>> param.to_dict()
+        {'value': None, 'default': 10, 'rules': ['TypeRule', 'RangeRule']}
+        """
+        return {
+            "value": None if self._value is _UNSET else self._value,
+            "default": self.default,
+            "rules": [DEFAULT_RULE_REGISTRY.serialize(rule) for rule in self.rules],
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], registry: RuleRegistry | None = None) -> "Param":
+        """
+        Create a Param instance from a dictionary.
+
+        Parameters
+        ----------
+        data : Dict[str, Any]
+            Dictionary containing 'value' and/or 'default' keys.
+            Note: Rules are not reconstructed (would require a rule registry).
+
+        Returns
+        -------
+        Param
+            New parameter instance with the specified values.
+
+        Example
+        -------
+        >>> data = {'value': 5, 'default': 10}
+        >>> param = Param.from_dict(data)
+        >>> param.get()
+        5
+        """
+        registry = registry or DEFAULT_RULE_REGISTRY
+        rules_data = data.get("rules", [])
+        rules = [registry.deserialize(rule_data) for rule_data in rules_data]
+        param = cls(default=data.get("default"), rules=rules)
+        if "value" in data and data["value"] is not None:
+            param.set(data["value"])
+        return param
 
 
 # --------------------------------------------------------------------------------------------------
@@ -193,11 +325,19 @@ class ParameterSet(UserDict[str, Param]):
     >>> params.get('param1')
     7
 
+    Use dot notation for nested access and assignment:
+
+    >>> params.model.lr = 0.01  # Sets value of nested parameter
+    >>> print(params.model.lr)  # Gets value: 0.01
+
     Notes
     -----
     Instances of `ParameterSet` behave like dictionaries. All the methods of the UserDict class are
     available for this object, and by extension all the dict methods. The main difference is that
     the values are `Param` objects, which provide additional validation and constraints.
+
+    Dot notation access returns `Param` or `ParameterSet` objects. Use `get_value()` to retrieve
+    values directly when needed.
 
     The `add`, `remove` and `override` methods provide flexibility for hierarchical construction of
     parameter sets that can mirror a hierarchy of workflows, from the most general to the most
@@ -210,6 +350,9 @@ class ParameterSet(UserDict[str, Param]):
     collections.UserDict
         Inherit from this class to create a dictionary-like object.
     """
+
+    # Attributes that belong to the object itself, not to be treated as parameter keys
+    _RESERVED_ATTRS = frozenset({"data", "relation_rules", "_RESERVED_ATTRS"})
 
     def __init__(self, *args, relation_rules: Optional[List[RelationRule]] = None, **kwargs):
         """
@@ -273,17 +416,14 @@ class ParameterSet(UserDict[str, Param]):
         Arguments
         ---------
         param : Any
-            If `param` is already a Param object, it will be added directly and its mode will be
-            adjusted to match the mode of the parent ParameterSet.
+            If `param` is already a Param or ParameterSet, it will be added directly.
             Otherwise, a new Param object will be created with the provided value as the default.
-            All the other attributes will not be specified, except the mode, which will match the
-            mode of the parent ParameterSet.
         """
         if name in self.data:
             raise OverrideParameterError(f"Parameter '{name}' already exists in the ParameterSet.")
-        if isinstance(param, Param):
+        if isinstance(param, (Param, ParameterSet, ParamGrid)):
             self.data[name] = param
-        else: # convert to Param object with the provided value as the default
+        else:  # convert to Param object with the provided value as the default
             self.data[name] = Param(default=param)
 
     def remove(self, name: str):
@@ -302,9 +442,8 @@ class ParameterSet(UserDict[str, Param]):
         """
         Access nested parameters using the dot notation (e.g. 'params.level.sublevel').
 
-        Overrides the `__getattr__` method to access the nested value of the parameters as if they
-        were attributes of the ParameterSet object. It supports arbitrary levels of nesting and
-        works with both direct parameters and nested ParameterSets.
+        Overrides the `__getattr__` method to access nested parameters as attributes. It supports
+        arbitrary levels of nesting and works with both direct parameters and nested ParameterSets.
 
         Parameters
         ----------
@@ -315,7 +454,7 @@ class ParameterSet(UserDict[str, Param]):
         Returns
         -------
         Any
-            Value of the parameter, if found.
+            Param or ParameterSet object, if found.
 
         Raises
         ------
@@ -326,7 +465,7 @@ class ParameterSet(UserDict[str, Param]):
         --------------
         1. Split the attribute name by dots to obtain a list of keys.
         2. Iteratively traverse the nested structure using these keys.
-        3. If a Param object is encountered, return its value.
+        3. If a Param object is encountered, return it.
         4. If a nested ParameterSet is encountered, continue traversing.
         5. If the traversal completes without finding a Param, return the final object (since the
            query might be for a nested ParameterSet).
@@ -344,9 +483,9 @@ class ParameterSet(UserDict[str, Param]):
         ...         )
         ...     )
         ... )
-        >>> print(nested_params.model.learning_rate)
+        >>> print(nested_params.model.learning_rate.get())
         0.01
-        >>> print(nested_params.model.layers.hidden_units)
+        >>> print(nested_params.model.layers.hidden_units.get())
         128
         >>> print(nested_params.non_existent)
         AttributeError: No parameter 'non_existent' in the ParameterSet.
@@ -361,23 +500,120 @@ class ParameterSet(UserDict[str, Param]):
         the corresponding object, and the next names would be passed to the original __getattr__
         method of the retrieved object.
         """
+        # Handle special attributes (dunder methods, private attrs) - delegate to parent
+        # This prevents recursion during deepcopy and pickle operations
+        if name.startswith("_"):
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
+        # Ensure 'data' attribute exists before accessing it
+        if "data" not in self.__dict__:
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
         keys = name.split(".") # split the attribute name by dots
-        obj = self # start traversal from the current object
+        obj: Any = self # start traversal from the current object
         try:
             for key in keys:
                 if isinstance(obj, ParameterSet) and key in obj.data:
                     obj = obj.data[key] # update the object to the nested ParameterSet
-                    if isinstance(obj, Param): # hit a Param object -> successful query
-                        return obj.get()
                 else: # delegate to parent class
-                    return super().__getattr__(name)
+                    raise AttributeError(f"No parameter '{name}' in the ParameterSet.")
             return obj # end of traversal without error -> query for the final object
-        except AttributeError: # if AttributeError at any point, stop traversal
-            return super().__getattr__(name) # delegate to parent class
+        except (AttributeError, KeyError):
+            raise AttributeError(f"No parameter '{name}' in the ParameterSet.")
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """
+        Set parameter values using dot notation (e.g. 'params.learning_rate = 0.01').
+
+        Supports assignment to both direct parameters and nested ParameterSets.
+        Reserved attributes (like 'data', 'relation_rules') are set normally.
+
+        Parameters
+        ----------
+        name : str
+            Attribute name to set.
+        value : Any
+            Value to assign. If the target is a Param, sets its value.
+            If the target is a ParameterSet, replaces it.
+
+        Raises
+        ------
+        AttributeError
+            If the specified parameter is not found in the ParameterSet.
+
+        Example
+        -------
+        >>> params = ParameterSet(
+        ...     model=ParameterSet(
+        ...         lr=Param(default=0.01),
+        ...     )
+        ... )
+        >>> params.model.lr = 0.001  # Sets the value of the 'lr' parameter
+        >>> print(params.model.lr)
+        0.001
+
+        Note
+        ----
+        This method differentiates between:
+        1. Reserved attributes of the ParameterSet object itself (stored normally)
+        2. Parameter keys in the underlying data dictionary (set via Param.set())
+        """
+        # Handle reserved attributes (object's own attributes)
+        if name in ParameterSet._RESERVED_ATTRS or name.startswith("_"):
+            object.__setattr__(self, name, value)
+            return
+
+        # During initialization, 'data' might not exist yet
+        if not hasattr(self, "data"):
+            object.__setattr__(self, name, value)
+            return
+
+        # Try to find and set the parameter
+        if name in self.data:
+            target = self.data[name]
+            if isinstance(target, Param):
+                target.set(value)
+            elif isinstance(target, ParameterSet):
+                # Replace nested ParameterSet or assign value to it
+                if isinstance(value, ParameterSet):
+                    self.data[name] = value
+                elif isinstance(value, dict):
+                    self.data[name] = ParameterSet.from_dict(value, values_only=True)
+                else:
+                    raise TypeError(
+                        f"Cannot assign non-ParameterSet value to nested ParameterSet '{name}'"
+                    )
+            else:
+                self.data[name] = value
+        else:
+            # Parameter doesn't exist - raise an error (don't silently create)
+            raise AttributeError(
+                f"No parameter '{name}' in the ParameterSet. "
+                f"Use add() to create new parameters."
+            )
 
     def get(self, name: str) -> Any:
         """Retrieve the value of a parameter by its name."""
         return self[name].get()
+
+    def get_value(self, name: str) -> Any:
+        """
+        Retrieve a parameter value by name, supporting dot notation.
+
+        Returns the current value if set, otherwise the default.
+        """
+        if "." not in name:
+            return self.get(name)
+        parts = name.split(".")
+        obj: Any = self
+        for part in parts:
+            if isinstance(obj, ParameterSet) and part in obj.data:
+                obj = obj.data[part]
+            else:
+                raise UnknownParameterError(f"No parameter '{name}' in the ParameterSet.")
+        if isinstance(obj, Param):
+            return obj.get()
+        raise UnknownParameterError(f"No parameter '{name}' in the ParameterSet.")
 
     def register_rule(self, target: str, rule: SingleValueRule) -> None:
         """
@@ -459,6 +695,114 @@ class ParameterSet(UserDict[str, Param]):
         """Create a deep copy of the parameter set, including all nested ParameterSets and Params."""
         return deepcopy(self)
 
+    def to_dict(self, values_only: bool = False) -> Dict[str, Any]:
+        """
+        Serialize the parameter set to a dictionary.
+
+        Parameters
+        ----------
+        values_only : bool, default False
+            If True, return only the current values (or defaults) of parameters.
+            If False, return the full serialization including Param metadata.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Dictionary representation of the parameter set.
+
+        Examples
+        --------
+        Get values only (useful for configuration export):
+
+        >>> params = ParameterSet(lr=Param(default=0.01), epochs=Param(default=100))
+        >>> params.to_dict(values_only=True)
+        {'lr': 0.01, 'epochs': 100}
+
+        Get full serialization:
+
+        >>> params.to_dict()
+        {'lr': {'value': None, 'default': 0.01, 'rules': []}, ...}
+
+        Nested parameter sets are recursively serialized:
+
+        >>> params = ParameterSet(model=ParameterSet(lr=Param(default=0.01)))
+        >>> params.to_dict(values_only=True)
+        {'model': {'lr': 0.01}}
+        """
+        result: Dict[str, Any] = {}
+        for name, param in self.data.items():
+            if isinstance(param, ParameterSet):
+                result[name] = param.to_dict(values_only=values_only)
+            elif isinstance(param, Param):
+                if values_only:
+                    # Return the current value if set, otherwise the default
+                    result[name] = param.get()
+                else:
+                    result[name] = param.to_dict()
+            else:
+                result[name] = param
+        return result
+
+    @classmethod
+    def from_dict(
+        cls, data: Dict[str, Any], values_only: bool = False
+    ) -> "ParameterSet":
+        """
+        Create a ParameterSet from a dictionary.
+
+        Parameters
+        ----------
+        data : Dict[str, Any]
+            Dictionary to convert. Structure depends on `values_only`.
+        values_only : bool, default False
+            If True, treats values as parameter values/defaults directly.
+            If False, expects full Param serialization format.
+
+        Returns
+        -------
+        ParameterSet
+            New parameter set instance.
+
+        Examples
+        --------
+        From values (configuration-style):
+
+        >>> data = {'lr': 0.01, 'epochs': 100}
+        >>> params = ParameterSet.from_dict(data, values_only=True)
+        >>> params.lr
+        0.01
+
+        From full serialization:
+
+        >>> data = {'lr': {'value': 0.01, 'default': 0.001}}
+        >>> params = ParameterSet.from_dict(data)
+
+        Nested dictionaries become nested ParameterSets:
+
+        >>> data = {'model': {'lr': 0.01}}
+        >>> params = ParameterSet.from_dict(data, values_only=True)
+        >>> params.model.lr
+        0.01
+        """
+        params = cls()
+        for name, value in data.items():
+            if isinstance(value, dict):
+                # Check if it's a nested ParameterSet or a Param serialization
+                if values_only or not any(k in value for k in ("value", "default", "rules")):
+                    # Nested dictionary -> nested ParameterSet
+                    params.data[name] = cls.from_dict(value, values_only=values_only)
+                else:
+                    # Param serialization format
+                    params.data[name] = Param.from_dict(value)
+            else:
+                if values_only:
+                    param = Param(default=None)
+                    param.set(value)
+                    params.data[name] = param
+                else:
+                    # Direct value -> Param with that default
+                    params.data[name] = Param(default=value)
+        return params
 
 
 # -------------------------------------------------------------------------------------------------
@@ -508,7 +852,17 @@ class ParamGrid:
         """Delegate rule registration to the underlying `Param` instance."""
         self.param.register_rule(rule)
 
-    def generate_params(self) -> List[Param]:
+    def iter_values(self) -> Iterable[Any]:
+        """Iterate over sweep values."""
+        return iter(self.sweep_values)
+
+    def make_param(self, value: Any) -> Param:
+        """Create a Param instance with a specific sweep value."""
+        param = self.param.copy()
+        param.set(value)
+        return param
+
+    def generate_params(self) -> Iterable[Param]:
         """
         Generate `Param` instances for each sweep value while keeping validation rules.
 
@@ -518,4 +872,5 @@ class ParamGrid:
             `Param` instances with the values to sweep over. Each instance has the same rules and
             constraints as the base `Param` object in the ParamGrid, but with a single value set.
         """
-        return [self.param.copy().set(value) for value in self.sweep_values]
+        for value in self.iter_values():
+            yield self.make_param(value)

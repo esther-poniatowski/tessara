@@ -27,7 +27,7 @@ from typing import Any, List, Dict, Optional, TypeAlias
 from collections.abc import Iterable, Mapping
 
 from tessara.validation.rules import Rule
-from tessara.errors.validation import GlobalValidationError, ValidationError, CheckError
+from tessara.core.errors.validation import GlobalValidationError, ValidationError, CheckError
 from tessara.core.parameters import ParameterSet
 
 

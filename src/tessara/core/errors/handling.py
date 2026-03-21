@@ -1,6 +1,6 @@
 """
-tessara.errors.validation
-=========================
+tessara.errors.handling
+=======================
 
 Custom exceptions raised during parameter manipulation.
 
@@ -10,6 +10,9 @@ MissingValueError
 OverrideParameterError
 UnknownParameterError
 """
+
+from tessara.core.errors.validation import ValidationError
+
 
 # --- ParameterSet Errors --------------------------------------------------------------------------
 

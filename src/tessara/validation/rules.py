@@ -65,10 +65,13 @@ composite_rule = AndRule(
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+import importlib
+import logging
+import inspect
 import re
-from typing import Optional, Any, Callable, Generic, TypeVar
+from typing import Optional, Any, Callable, Generic, TypeVar, Dict, Type
 
-from tessara.errors.validation import (
+from tessara.core.errors.validation import (
     ValidationError,
     TypeValidationError,
     RangeValidationError,
@@ -78,6 +81,7 @@ from tessara.errors.validation import (
     RelationValidationError
 )
 
+logger = logging.getLogger(__name__)
 
 # --- Base Rule Class ------------------------------------------------------------------------------
 
@@ -147,6 +151,98 @@ class Rule(ABC, Generic[E]):
     def create_error(self, *args, **kwargs) -> E :
         """Factory method to create a specific error associated with a rule's failure."""
         pass
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize a rule to a dictionary."""
+        raise NotImplementedError("Rule serialization is not implemented for this rule.")
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], registry: "RuleRegistry") -> "Rule":
+        """Deserialize a rule from a dictionary."""
+        raise NotImplementedError("Rule deserialization is not implemented for this rule.")
+
+
+class UnknownRule(Rule[ValidationError]):
+    """Fallback rule for unknown or unsupported serialized rules."""
+
+    def __init__(self, payload: Dict[str, Any]):
+        self.payload = payload
+
+    def check(self, *args, **kwargs) -> bool:
+        return True
+
+    def create_error(self, *args, **kwargs) -> ValidationError:
+        return ValidationError()
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"type": "UnknownRule", "payload": self.payload}
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], registry: "RuleRegistry") -> "UnknownRule":
+        return cls(payload=data)
+
+
+class RuleRegistry:
+    """
+    Registry for rule serialization and deserialization.
+
+    Provides a central mapping from rule type names to rule classes.
+    """
+
+    def __init__(self) -> None:
+        self._registry: Dict[str, Type[Rule]] = {}
+
+    def register(self, rule_cls: Type[Rule], name: str | None = None) -> None:
+        """Register a rule class."""
+        key = name or rule_cls.__name__
+        self._registry[key] = rule_cls
+
+    def serialize(self, rule: Rule) -> Dict[str, Any]:
+        """Serialize a rule to a dictionary."""
+        data = rule.to_dict()
+        if "type" not in data:
+            data["type"] = rule.__class__.__name__
+        return data
+
+    def deserialize(self, data: Dict[str, Any]) -> Rule:
+        """Deserialize a rule from a dictionary."""
+        rule_type = data.get("type")
+        if not rule_type:
+            logger.warning("Missing rule type in serialized rule data.")
+            return UnknownRule(data)
+        rule_cls = self._registry.get(rule_type)
+        if rule_cls is None:
+            logger.warning("Unknown rule type '%s'.", rule_type)
+            return UnknownRule(data)
+        try:
+            return rule_cls.from_dict(data, registry=self)
+        except Exception as exc:
+            logger.warning("Failed to deserialize rule '%s': %s", rule_type, exc)
+            return UnknownRule(data)
+
+    @staticmethod
+    def _type_to_spec(expected_type: type | tuple[type]) -> list[dict]:
+        if isinstance(expected_type, tuple):
+            types = expected_type
+        else:
+            types = (expected_type,)
+        return [
+            {"module": t.__module__, "qualname": t.__qualname__}
+            for t in types
+        ]
+
+    @staticmethod
+    def _spec_to_type(specs: list[dict]) -> type | tuple[type]:
+        types = []
+        for spec in specs:
+            module = importlib.import_module(spec["module"])
+            current = module
+            for part in spec["qualname"].split("."):
+                current = getattr(current, part)
+            types.append(current)
+        if len(types) == 1:
+            return types[0]
+        return tuple(types)
 
 
 # --- Single Value Rules ---------------------------------------------------------------------------
@@ -223,6 +319,17 @@ class TypeRule(SingleValueRule[TypeValidationError]):
     def create_error(self, value) -> TypeValidationError:
         return TypeValidationError(value, self.expected_type)
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": "TypeRule",
+            "expected_type": RuleRegistry._type_to_spec(self.expected_type),
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], registry: RuleRegistry) -> "TypeRule":
+        expected_type = registry._spec_to_type(data["expected_type"])
+        return cls(expected_type)
+
 
 class RangeRule(SingleValueRule[RangeValidationError]):
     """
@@ -263,14 +370,31 @@ class RangeRule(SingleValueRule[RangeValidationError]):
             (self.lt, lambda v, c: v < c),
             (self.le, lambda v, c: v <= c)
         ]
-        return all(func(value, constraint) for constraint, func in constraints if constraint is not None)
+        try:
+            return all(func(value, constraint) for constraint, func in constraints if constraint is not None)
+        except TypeError:
+            # Comparison not supported between value type and constraint type
+            return False
 
     def create_error(self, value) -> RangeValidationError:
         return RangeValidationError(value, ge=self.ge, gt=self.gt, le=self.le, lt=self.lt)
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": "RangeRule",
+            "ge": self.ge,
+            "gt": self.gt,
+            "le": self.le,
+            "lt": self.lt,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], registry: RuleRegistry) -> "RangeRule":
+        return cls(ge=data.get("ge"), gt=data.get("gt"), le=data.get("le"), lt=data.get("lt"))
+
 
 class PatternRule(SingleValueRule[PatternValidationError]):
-    """
+    r"""
     Rule checking if a value matches a regular expression pattern.
 
     Attributes
@@ -308,6 +432,13 @@ class PatternRule(SingleValueRule[PatternValidationError]):
     def create_error(self, value) -> PatternValidationError:
         return PatternValidationError(value, self.pattern)
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {"type": "PatternRule", "pattern": self.pattern.pattern}
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], registry: RuleRegistry) -> "PatternRule":
+        return cls(pattern=data["pattern"])
+
 
 class OptionRule(SingleValueRule[OptionValidationError]):
     """
@@ -337,6 +468,13 @@ class OptionRule(SingleValueRule[OptionValidationError]):
 
     def create_error(self, value) -> OptionValidationError:
         return OptionValidationError(value, self.options)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"type": "OptionRule", "options": list(self.options)}
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], registry: RuleRegistry) -> "OptionRule":
+        return cls(options=data["options"])
 
 
 class CustomRule(SingleValueRule[CustomValidationError]):
@@ -369,6 +507,210 @@ class CustomRule(SingleValueRule[CustomValidationError]):
 
     def create_error(self, value) -> CustomValidationError:
         return CustomValidationError(value, self.func)
+
+    def to_dict(self) -> Dict[str, Any]:
+        func = self.func
+        qualname = getattr(func, "__qualname__", None)
+        module = getattr(func, "__module__", None)
+        return {
+            "type": "CustomRule",
+            "serializable": False,
+            "module": module,
+            "qualname": qualname,
+            "repr": repr(func),
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], registry: RuleRegistry) -> "CustomRule":
+        raise ValueError("CustomRule cannot be deserialized without a callable.")
+
+
+# --- Composite Rules ------------------------------------------------------------------------------
+
+class CompositeValidationError(ValidationError):
+    """
+    Exception raised when a composite validation rule (AndRule or OrRule) fails.
+
+    Attributes
+    ----------
+    errors : List[ValidationError]
+        Individual errors from the sub-rules that failed.
+    operator : str
+        The logical operator ('AND' or 'OR').
+    value : Any
+        The value that failed validation.
+    rule_ids : List[str]
+        Names of the rules that failed.
+    """
+    def __init__(
+        self,
+        errors: list,
+        operator: str,
+        value: Any = None,
+        rule_ids: Optional[list[str]] = None,
+    ):
+        self.errors = errors
+        self.operator = operator
+        self.value = value
+        self.rule_ids = rule_ids or []
+        super().__init__()
+
+    def format_message(self) -> str:
+        value_repr = repr(self.value) if self.value is not None else "value"
+        if not self.errors:
+            return f"Composite {self.operator} rule failed for {value_repr} with no specific errors."
+        messages = [str(e) for e in self.errors]
+        failed_rules = ", ".join(self.rule_ids) if self.rule_ids else "unknown rules"
+        return (
+            f"Composite {self.operator} rule failed for {value_repr}. "
+            f"Failed rules: [{failed_rules}]. Details: {'; '.join(messages)}"
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "operator": self.operator,
+            "value": repr(self.value),
+            "errors": [str(e) for e in self.errors],
+            "rule_ids": list(self.rule_ids),
+        }
+
+
+class AndRule(SingleValueRule[CompositeValidationError]):
+    """
+    Composite rule that requires ALL sub-rules to pass (logical AND).
+
+    All sub-rules must be satisfied for the value to be valid.
+
+    Attributes
+    ----------
+    rules : List[SingleValueRule]
+        Sub-rules that must all pass.
+
+    Examples
+    --------
+    Combine type and range validation:
+
+    >>> rule = AndRule(
+    ...     TypeRule(int),
+    ...     RangeRule(gt=0, lt=100),
+    ... )
+    >>> rule.check(50)
+    True
+    >>> rule.check(-5)
+    False
+
+    Nested composite rules:
+
+    >>> rule = AndRule(
+    ...     TypeRule(int),
+    ...     OrRule(RangeRule(lt=0), RangeRule(gt=100)),
+    ... )
+    >>> rule.check(-5)  # int AND (negative OR > 100)
+    True
+    """
+    def __init__(self, *rules: SingleValueRule):
+        if not rules:
+            raise ValueError("AndRule requires at least one sub-rule.")
+        for rule in rules:
+            if not isinstance(rule, SingleValueRule):
+                raise TypeError(f"All rules must be SingleValueRule instances, got {type(rule)}")
+        self.rules = list(rules)
+
+    def check(self, value) -> bool:
+        return all(rule.check(value) for rule in self.rules)
+
+    def create_error(self, value) -> CompositeValidationError:
+        errors = []
+        rule_ids: list[str] = []
+        for rule in self.rules:
+            error = rule.get_error(value)
+            if error is not None:
+                errors.append(error)
+                rule_ids.append(rule.__class__.__name__)
+        return CompositeValidationError(errors, "AND", value=value, rule_ids=rule_ids)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": "AndRule",
+            "rules": [rule.to_dict() for rule in self.rules],
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], registry: RuleRegistry) -> "AndRule":
+        rules = [registry.deserialize(rule_data) for rule_data in data.get("rules", [])]
+        return cls(*rules)
+
+
+class OrRule(SingleValueRule[CompositeValidationError]):
+    """
+    Composite rule that requires AT LEAST ONE sub-rule to pass (logical OR).
+
+    At least one sub-rule must be satisfied for the value to be valid.
+
+    Attributes
+    ----------
+    rules : List[SingleValueRule]
+        Sub-rules where at least one must pass.
+
+    Examples
+    --------
+    Accept either string or integer:
+
+    >>> rule = OrRule(
+    ...     TypeRule(str),
+    ...     TypeRule(int),
+    ... )
+    >>> rule.check("hello")
+    True
+    >>> rule.check(42)
+    True
+    >>> rule.check(3.14)
+    False
+
+    Complex condition - value is either small or large (not medium):
+
+    >>> rule = OrRule(
+    ...     RangeRule(lt=10),
+    ...     RangeRule(gt=100),
+    ... )
+    >>> rule.check(5)   # Small: passes
+    True
+    >>> rule.check(50)  # Medium: fails
+    False
+    >>> rule.check(200) # Large: passes
+    True
+    """
+    def __init__(self, *rules: SingleValueRule):
+        if not rules:
+            raise ValueError("OrRule requires at least one sub-rule.")
+        for rule in rules:
+            if not isinstance(rule, SingleValueRule):
+                raise TypeError(f"All rules must be SingleValueRule instances, got {type(rule)}")
+        self.rules = list(rules)
+
+    def check(self, value) -> bool:
+        return any(rule.check(value) for rule in self.rules)
+
+    def create_error(self, value) -> CompositeValidationError:
+        errors = []
+        rule_ids: list[str] = []
+        for rule in self.rules:
+            error = rule.get_error(value)
+            if error is not None:
+                errors.append(error)
+                rule_ids.append(rule.__class__.__name__)
+        return CompositeValidationError(errors, "OR", value=value, rule_ids=rule_ids)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": "OrRule",
+            "rules": [rule.to_dict() for rule in self.rules],
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], registry: RuleRegistry) -> "OrRule":
+        rules = [registry.deserialize(rule_data) for rule_data in data.get("rules", [])]
+        return cls(*rules)
 
 
 # --- Multi Value Rules ----------------------------------------------------------------------------
@@ -418,3 +760,14 @@ class MultiValueRule(Rule[RelationValidationError]):
 
     def create_error(self, *args, **kwargs) -> RelationValidationError:
         return RelationValidationError(self.func, args=args, kwargs=kwargs)
+
+
+DEFAULT_RULE_REGISTRY = RuleRegistry()
+DEFAULT_RULE_REGISTRY.register(TypeRule)
+DEFAULT_RULE_REGISTRY.register(RangeRule)
+DEFAULT_RULE_REGISTRY.register(PatternRule)
+DEFAULT_RULE_REGISTRY.register(OptionRule)
+DEFAULT_RULE_REGISTRY.register(CustomRule)
+DEFAULT_RULE_REGISTRY.register(AndRule)
+DEFAULT_RULE_REGISTRY.register(OrRule)
+DEFAULT_RULE_REGISTRY.register(UnknownRule)
