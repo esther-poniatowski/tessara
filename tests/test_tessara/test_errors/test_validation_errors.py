@@ -14,7 +14,13 @@ from typing import Any
 
 import pytest
 
-from tessara.errors.validation import *
+from tessara.core.errors.validation import *
+from tessara.core.errors.handling import (
+    MissingValueError,
+    OverrideParameterError,
+    UnknownParameterError,
+)
+
 
 # --- Tests for the base ValidationError class -----------------------------------------------------
 
