@@ -13,3 +13,9 @@ __pycache__
 *.py[cod]
 .pytest_cache
 .mypy_cache
+
+# Build Artifacts
+*.egg-info
+dist/
+build/
+docs/_build/
