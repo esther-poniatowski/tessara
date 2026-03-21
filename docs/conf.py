@@ -23,12 +23,27 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.intersphinx",
     "sphinx.ext.autosummary",
+    "myst_parser",
 ]
 
 autosummary_generate = True
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+}
+
+# -- MyST settings -----------------------------------------------------------
+
+myst_enable_extensions = [
+    "colon_fence",
+    "deflist",
+    "fieldlist",
+    "tasklist",
+]
 
 # -- Options for HTML output -------------------------------------------------
 

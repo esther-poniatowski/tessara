@@ -24,5 +24,6 @@ dependencies:
   - sphinxcontrib-napoleon # for numpydoc-style docstrings
   - sphinx-rtd-theme       # ReadTheDocs theme
   - sphinx-needs           # for requirements and specifications in Sphinx
+  - myst-parser            # Markdown support for Sphinx
   - esbonio                # language server for Sphinx
 variables:
