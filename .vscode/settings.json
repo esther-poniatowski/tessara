@@ -82,7 +82,8 @@
   "black-formatter.args": ["--config", "${workspaceFolder}/config/tools/black.toml"],
 
   // --- Linting -----------------------------------------------------------------------------------
-  "pylint.args": ["--rcfile=${workspaceFolder}/configtools/pylintrc.ini"],
+  "pylint.args": ["--rcfile=${workspaceFolder}/config/tools/pylintrc.ini"],
+  "python.analysis.typeCheckingMode": "strict",
 
   // --- Static Type Checking ----------------------------------------------------------------------
   "mypy-type-checker.args": ["--config-file=${workspaceFolder}/config/tools/mypy.ini"],
@@ -97,8 +98,8 @@
   "esbonio.server.enabled": true,
   "esbonio.server.enabledInPyFiles": true,
   "esbonio.server.excludedModules": [],
-  "esbonio.sphinx.confDir": "docs/source",
-  "esbonio.sphinx.srcDir": "docs/source",
+  "esbonio.sphinx.confDir": "docs",
+  "esbonio.sphinx.srcDir": "docs",
   "esbonio.sphinx.builderName": "html",
 
   // --- Testing -----------------------------------------------------------------------------------
