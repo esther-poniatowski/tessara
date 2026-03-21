@@ -26,9 +26,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev,docs]"
 
-      - name: Run linter (ruff)
+      - name: Black
         run: |
-          ruff check src/
+          black --check --config config/tools/black.toml src/ tests/
+
+      - name: Pylint
+        run: |
+          pylint --rcfile=config/tools/pylintrc.ini src/tessara/
 
       - name: Run type checker (mypy)
         run: |
