@@ -1,7 +1,7 @@
 # Tessara
 
 [![Conda](https://img.shields.io/badge/conda-eresthanaconda--channel-blue)](#installation)
-[![Maintenance](https://img.shields.io/maintenance/yes/2025)]()
+[![Maintenance](https://img.shields.io/maintenance/yes/2026)]()
 [![Last Commit](https://img.shields.io/github/last-commit/esther-poniatowski/tessara)](https://github.com/esther-poniatowski/tessara/commits/main)
 [![Python](https://img.shields.io/badge/python-supported-blue)](https://www.python.org/)
 [![License: GPL](https://img.shields.io/badge/License-GPL-yellow.svg)](https://opensource.org/licenses/GPL-3.0)
@@ -97,18 +97,35 @@ conda install tessara -c eresthanaconda
 
 ### Command Line Interface (CLI)
 
-To display the list of available commands and options:
+Display version and platform diagnostics:
 
 ```sh
-tessara --help
+tessara info
 ```
 
 ### Programmatic Usage
 
-To use the package programmatically in Python:
+Define parameters with validation rules:
 
 ```python
-import tessara
+from tessara.core.parameters import Param, ParameterSet, ParamGrid
+from tessara.validation.rules import TypeRule, RangeRule
+
+# Single parameter with constraints
+lr = Param(default=0.001, rules=[TypeRule(float), RangeRule(gt=0, lt=1)])
+
+# Nested parameter set with dot-notation access
+params = ParameterSet(
+    model=ParameterSet(
+        lr=Param(default=0.001),
+        epochs=Param(default=100, rules=[TypeRule(int), RangeRule(ge=1)]),
+    ),
+    batch_size=ParamGrid(Param(), sweep_values=[32, 64, 128]),
+)
+
+# Set values and validate
+params["model"]["lr"].set(0.01)
+config = params.to_dict()
 ```
 
 ---

@@ -12,6 +12,14 @@ guide/concepts
 api/index
 ```
 
+```{toctree}
+:maxdepth: 1
+:caption: Architecture Decisions
+
+adr/1-sweeping-parameters
+adr/adr-template
+```
+
 ## Features
 
 - **Type-safe parameters**: Define parameters with types, defaults, and constraints
