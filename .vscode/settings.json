@@ -103,7 +103,7 @@
   "esbonio.sphinx.builderName": "html",
 
   // --- Testing -----------------------------------------------------------------------------------
-  "python.testing.pytestEnabled": false,
+  "python.testing.pytestEnabled": true,
   "python.testing.unittestEnabled": false,
   "pythonTestExplorer.testFramework": "pytest",
   "python.testing.pytestArgs": ["tests"],

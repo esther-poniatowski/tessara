@@ -76,20 +76,20 @@ steps to set up a development environment:
 
 This project separates configuration concerns between two locations:
 
-### `pyproject.toml` --- Project Management
+### `pyproject.toml` — Project Management
 
 Contains only build system, package metadata, dependencies, entry points, and tool configurations
 that **must** reside in `pyproject.toml` (because the tool does not support external config paths):
 
-- `[build-system]` --- Build backend (setuptools)
-- `[project]` --- Name, version, authors, license, description, keywords, classifiers, URLs
-- `[project.dependencies]` --- Runtime dependencies
-- `[project.optional-dependencies]` --- Optional dependency groups
-- `[project.scripts]` --- CLI entry points
-- `[tool.setuptools]` --- Package discovery and source layout
-- `[tool.pytest.ini_options]` --- Pytest settings (pytest does not support custom config paths)
+- `[build-system]` — Build backend (setuptools)
+- `[project]` — Name, version, authors, license, description, keywords, classifiers, URLs
+- `[project.dependencies]` — Runtime dependencies
+- `[project.optional-dependencies]` — Optional dependency groups
+- `[project.scripts]` — CLI entry points
+- `[tool.setuptools]` — Package discovery and source layout
+- `[tool.pytest.ini_options]` — Pytest settings (pytest does not support custom config paths)
 
-### `config/tools/` --- Tool-Specific Settings
+### `config/tools/` — Tool-Specific Settings
 
 Contains dedicated configuration files for each development tool. This achieves modular,
 tool-specific settings that are decoupled from the main project file:
@@ -103,7 +103,7 @@ tool-specific settings that are decoupled from the main project file:
 | `pyrightconfig.json`  | Pyright                | Static type analysis overrides    |
 | `releaserc.toml`      | Python Semantic Release| Versioning and changelog           |
 
-### `config/dictionaries/` --- Spell Checking
+### `config/dictionaries/` — Spell Checking
 
 Custom word lists for CSpell (VS Code spell checker):
 

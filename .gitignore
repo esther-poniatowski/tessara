@@ -1,21 +1,36 @@
 # gitignore file for tessara
-# --------------------------
+# ----------------------------------
 
-# Temporary files
+## Temporary files
 *.tmp
 *.temp
 
-# MacOS
+## Credentials
+.git-credentials
+
+## macOS
 .DS_Store
 
-# Python Cache
-__pycache__
+## Python Cache
+__pycache__/
 *.py[cod]
-.pytest_cache
-.mypy_cache
 
-# Build Artifacts
-*.egg-info
+## Python Distribution / Packaging
+*.egg-info/
+*.egg
 dist/
 build/
+
+## Test Coverage
+.coverage
+htmlcov/
+
+## Tool Caches
+.pytest_cache/
+.mypy_cache/
+
+## Jupyter Notebook
+.ipynb_checkpoints/
+
+## Documentation Build
 docs/_build/

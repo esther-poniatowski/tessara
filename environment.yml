@@ -17,6 +17,7 @@ dependencies:
   - pyright                # code linting
   # Testing
   - pytest
+  - pytest-cov             # coverage reporting
   - pytest-mock
   - pytest-pylint          # Pylint plugin for Pytest
   # Documentation
