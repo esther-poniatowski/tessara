@@ -5,4 +5,4 @@ entry points, or package metadata.
 
 | Project | Path | Mechanism |
 |---------|------|-----------|
-| RS-ctx-dep-net | `work/research/RS-ctx-dep-net` | editable pip install (`environment.yml`) |
+| geonexus | `work/research/geonexus` | editable pip install (`environment.yml`) |
