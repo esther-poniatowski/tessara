@@ -8,7 +8,7 @@
 
 Currently, individual parameters are represented by the `Param` class, which encapsulates an optional default value and a user-defined runtime value.
 
-This parameter system needs to integrate functionality for "sweeping parameters", allowing systematic exploration of a range of values in workflows.
+This parameter system needs to integrate sweeping parameters, allowing systematic exploration of a range of values in workflows.
 
 **Questions to be addressed**:
 

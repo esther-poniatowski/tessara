@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/python-supported-blue)](https://www.python.org/)
 [![License: GPL](https://img.shields.io/badge/License-GPL-yellow.svg)](https://opensource.org/licenses/GPL-3.0)
 
-Parameter management system for declarative definition, constraint enforcement, and modular composition.
+Parameter management system for declaring, validating, and composing structured parameter sets.
 
 ---
 
@@ -34,43 +34,38 @@ components.
 
 ### Advantages
 
-Tessara introduces a parameter management framework for manipulating
-parameters sets as structured objects with validation rules and modular compositions.
+Tessara treats parameter sets as structured objects with validation rules and composable modules.
 
 ---
 
 ## Features
 
-- [ ] **Structured declarative specifications**: Define parameters as typed objects with validation
-  constraints, using predefined and custom rules.
-- [ ] **Direct Parameter Access**: Retrieve parameters and nested fields using dot notation for
-  clarity and uniformity.
-- [ ] **Modular composition of parameter sets**: Organize parameters into reusable and composable
-  collections that can be merged or overridden.
-- [ ] **Flexible Value Setting**: Define default values at the definition time or runtime values.
-- [ ] **Schema Validation**: Enforce constraints on single parameters, levering type hints for
-  compact and readable definitions.
-- [ ] **Relational Validation**: Enforce consistency across parameters by defining relational rules.
-- [ ] **Sweeping exploration**: Define parameter sweeps for systematic experimentation and
-  controlled variability.
+- [ ] **Declarative specifications**: Define parameters as typed objects with predefined and custom
+  validation constraints.
+- [ ] **Dot-notation access**: Retrieve parameters and nested fields through uniform dot notation.
+- [ ] **Composable parameter sets**: Organize parameters into reusable collections that can be
+  merged or overridden.
+- [ ] **Flexible defaults**: Set default values at definition time or override them at runtime.
+- [ ] **Schema validation**: Enforce constraints on individual parameters using type hints for
+  compact definitions.
+- [ ] **Relational validation**: Enforce consistency across parameters through relational rules.
+- [ ] **Parameter sweeps**: Define systematic sweeps for controlled experimentation.
 
 ---
 
 ## Installation
 
-To install the package and its dependencies, use one of the following methods:
+### Using pip
 
-### Using Pip Installs Packages
-
-Install the package from the GitHub repository URL via `pip`:
+Install from the GitHub repository:
 
 ```bash
 pip install git+https://github.com/esther-poniatowski/tessara.git
 ```
 
-### Using Conda
+### Using conda
 
-Install the package from the private channel eresthanaconda:
+Install from the eresthanaconda channel:
 
 ```bash
 conda install tessara -c eresthanaconda

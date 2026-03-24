@@ -1,7 +1,7 @@
 # Tessara Documentation
 
 **Tessara** is a parameter management library for scientific computing workflows.
-It provides type-safe parameter definitions, validation rules, and sweep generation.
+Tessara provides type-safe parameter definitions, validation rules, and sweep generation.
 
 ```{toctree}
 :maxdepth: 2
