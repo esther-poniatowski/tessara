@@ -22,18 +22,15 @@ Individual rules can already validate values by themselves, which allows for tes
 The Validator class is a higher-level component that aggregates the outcomes of multiple rules.
 """
 from dataclasses import dataclass
-from abc import ABC, abstractmethod
-from typing import Any, List, Dict, Optional, TypeAlias
+from typing import Any, List, Dict, Optional
 from collections.abc import Iterable, Mapping
 
 from tessara.validation.rules import Rule
 from tessara.core.errors.validation import GlobalValidationError, ValidationError, CheckError
 from tessara.core.parameters import ParameterSet
+from tessara.core.types import Targets
 
-
-Targets : TypeAlias = Iterable[str] | Mapping[str, str]
-"""Type alias for target parameters (names) to validate."""
-Values : TypeAlias = List[Any] | Dict[str, Any]
+Values = List[Any] | Dict[str, Any]
 """Type alias for values to validate against a rule, retrieved from the target names."""
 
 
@@ -207,16 +204,11 @@ class Checker:
             return self.rule.get_error(*values)
         return self.rule.get_error(**values)  # `kwargs` mode
 
-class Validator(ABC):
+class Validator:
     """
     Validate input values against a set of rules.
 
     Input values are fixed while several rules can be checked against them.
-
-    Class Attributes
-    ----------------
-    SUCCESS_FLAG : str
-        Default message indicating that a check passed during the validation process.
 
     Attributes
     ----------
@@ -224,17 +216,15 @@ class Validator(ABC):
         Set of parameters to validate.
     strict : bool
         Flag to enable strict mode, which determines the severity of the checks.
-        In strict mode, the any rule failure will raise a GlobalValidationError at the end of the
+        In strict mode, any rule failure will raise a GlobalValidationError at the end of the
         validation process.
         In non-strict mode, the validation simply collects all errors in the report.
 
     Methods
     -------
-    reset_checks() -> None
-        Reset the checks to perform on the parameters during a new validation process.
-    reset_outcomes() -> None
-        Reset the error stack and the report for a new validation process.
-    filter(include_only, exclude) -> List[Check]
+    init_checks() -> List[Checker]
+        Determine all checks to perform on the parameters.
+    filter(checks, include_only, exclude) -> List[Checker]
         Filter the checks to perform on the parameters based on the rule type.
     validate() -> bool
         Execute the full validation process over a set of parameters and rules.
@@ -249,8 +239,8 @@ class Validator(ABC):
         Base class for validation rules to apply.
     ValidationError
         Base class for all validation errors.
-    Check
-        Representation of a single validation check.
+    Checker
+        Specification and executor for a single validation check.
     """
     def __init__(self, params: ParameterSet, strict: bool = False) -> None:
         self.params = params
@@ -258,7 +248,7 @@ class Validator(ABC):
         self.recorder = ValidationRecorder()
         self.checks: List[Checker] = []
 
-    def init_checks(self) -> None:
+    def init_checks(self) -> List[Checker]:
         """
         Determine all the checks to perform on the parameters during a new validation process.
 
@@ -269,19 +259,19 @@ class Validator(ABC):
 
         Returns
         -------
-        List[Check]
+        List[Checker]
             Checks to perform on the parameters, before any filtering.
         """
-        checks = []
-        for name, param in self.params.items(): # all Param instances in the set
-            for rule in param.rules: # one check per rule for each parameter
+        checks: List[Checker] = []
+        for name, param in self.params.items():  # all Param instances in the set
+            for rule in param.rules:  # one check per rule for each parameter
                 checks.append(Checker(rule, targets=[name]))
-        for rule, targets in self.params.relation_rules: # all global rules in the set
+        for rule, targets in self.params.relation_rules:  # all global rules in the set
             checks.append(Checker(rule, targets))
         return checks
 
     @staticmethod
-    def filter(checks : List[Checker],
+    def filter(checks: List[Checker],
                include_only: Optional[Iterable[Rule]] = None,
                exclude: Optional[Iterable[Rule]] = None
                ) -> List[Checker]:
@@ -290,13 +280,13 @@ class Validator(ABC):
 
         Arguments
         ---------
-        checks : List[Check]
+        checks : List[Checker]
             Checks to filter based on the rule type.
         include_only : Iterable[Rule]
-            Rule types to include exclusively in the checks. It takes precedence over the `exclude`
+            Rule types to include exclusively in the checks. It takes precedence over the ``exclude``
             argument if both are provided.
         exclude : Iterable[Rule]
-            Rule types to exclude from the checks, if the `only` argument is not provided.
+            Rule types to exclude from the checks, if the ``only`` argument is not provided.
         """
         if include_only:
             return [chk for chk in checks if chk.rule in include_only]
@@ -325,22 +315,22 @@ class Validator(ABC):
 
         Raises
         ------
-        Exception
-            If a rule itself fails to execute (before returning its outcome).
+        GlobalValidationError
+            If strict mode is enabled and any rule fails.
         """
         # Start a new validation process
         self.recorder.report.clear()
         self.recorder.errors.clear()
-        self.checks = self.init_checks()
+        checks = self.init_checks()
         if include_only or exclude:
             checks = self.filter(checks, include_only, exclude)
+        self.checks = checks
         # Iterate over the checks
         for chk in checks:
             rule, targets = chk.rule, chk.targets
-            try: # catch rule outcomes
-                values = chk.bind_targets(self.params) # retrieve target values
-                error = self.check(rule, values) # ValidationError or None
-            except Exception as exc: # catch execution errors (no rule outcome)
+            try:  # catch rule outcomes
+                error = chk.check(self.params)  # ValidationError or None
+            except Exception as exc:  # catch execution errors (no rule outcome)
                 error = CheckError(exc)
             # Record the outcome of the check
             self.recorder.record(rule, targets, error)

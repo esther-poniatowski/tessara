@@ -13,6 +13,7 @@ PatternValidationError
 OptionValidationError
 CustomValidationError
 RelationValidationError
+CompositeValidationError
 CheckError
 GlobalValidationError
 """
@@ -290,6 +291,54 @@ class CheckError(ValidationError):
 
     def format_message(self) -> str:
         return f"Execution failed for validation check: {str(self.exception)}"
+
+
+class CompositeValidationError(ValidationError):
+    """
+    Exception raised when a composite validation rule (AndRule or OrRule) fails.
+
+    Attributes
+    ----------
+    errors : List[ValidationError]
+        Individual errors from the sub-rules that failed.
+    operator : str
+        The logical operator ('AND' or 'OR').
+    value : Any
+        The value that failed validation.
+    rule_ids : List[str]
+        Names of the rules that failed.
+    """
+    def __init__(
+        self,
+        errors: list,
+        operator: str,
+        value: Any = None,
+        rule_ids: Optional[list[str]] = None,
+    ):
+        self.errors = errors
+        self.operator = operator
+        self.value = value
+        self.rule_ids = rule_ids or []
+        super().__init__()
+
+    def format_message(self) -> str:
+        value_repr = repr(self.value) if self.value is not None else "value"
+        if not self.errors:
+            return f"Composite {self.operator} rule failed for {value_repr} with no specific errors."
+        messages = [str(e) for e in self.errors]
+        failed_rules = ", ".join(self.rule_ids) if self.rule_ids else "unknown rules"
+        return (
+            f"Composite {self.operator} rule failed for {value_repr}. "
+            f"Failed rules: [{failed_rules}]. Details: {'; '.join(messages)}"
+        )
+
+    def to_dict(self) -> dict:
+        return {
+            "operator": self.operator,
+            "value": repr(self.value),
+            "errors": [str(e) for e in self.errors],
+            "rule_ids": list(self.rule_ids),
+        }
 
 
 class GlobalValidationError(ValidationError):
