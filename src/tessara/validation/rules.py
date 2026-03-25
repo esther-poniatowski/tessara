@@ -80,6 +80,7 @@ from tessara.core.errors.validation import (
     CustomValidationError,
     RelationValidationError,
     CompositeValidationError,
+    RuleDeserializationError,
 )
 
 logger = logging.getLogger(__name__)
@@ -170,10 +171,14 @@ class UnknownRule(Rule[ValidationError]):
         self.payload = payload
 
     def check(self, *args, **kwargs) -> bool:
-        return True
+        return False
 
     def create_error(self, *args, **kwargs) -> ValidationError:
-        return ValidationError()
+        return RuleDeserializationError(
+            "unknown or unsupported rule payload",
+            rule_type=self.payload.get("type"),
+            payload=self.payload,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return {"type": "UnknownRule", "payload": self.payload}
@@ -209,17 +214,22 @@ class RuleRegistry:
         """Deserialize a rule from a dictionary."""
         rule_type = data.get("type")
         if not rule_type:
-            logger.warning("Missing rule type in serialized rule data.")
-            return UnknownRule(data)
+            raise RuleDeserializationError("missing rule type", payload=data)
         rule_cls = self._registry.get(rule_type)
         if rule_cls is None:
-            logger.warning("Unknown rule type '%s'.", rule_type)
-            return UnknownRule(data)
+            raise RuleDeserializationError(
+                "unknown rule type",
+                rule_type=rule_type,
+                payload=data,
+            )
         try:
             return rule_cls.from_dict(data, registry=self)
         except Exception as exc:
-            logger.warning("Failed to deserialize rule '%s': %s", rule_type, exc)
-            return UnknownRule(data)
+            raise RuleDeserializationError(
+                str(exc),
+                rule_type=rule_type,
+                payload=data,
+            ) from exc
 
     @staticmethod
     def _type_to_spec(expected_type: type | tuple[type]) -> list[dict]:

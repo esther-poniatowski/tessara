@@ -362,3 +362,33 @@ class GlobalValidationError(ValidationError):
         if not self.errors:
             return "No errors occurred."
         return "\n".join(str(error) for error in self.errors)
+
+
+class RuleDeserializationError(ValidationError):
+    """
+    Exception raised when serialized validation policy cannot be materialized safely.
+
+    Parameters
+    ----------
+    rule_type : Optional[str]
+        Serialized rule type name, if available.
+    reason : str
+        Description of why deserialization failed.
+    payload : Optional[Mapping[str, Any]]
+        Serialized data that could not be deserialized.
+    """
+
+    def __init__(
+        self,
+        reason: str,
+        rule_type: Optional[str] = None,
+        payload: Optional[Mapping[str, Any]] = None,
+    ):
+        self.reason = reason
+        self.rule_type = rule_type
+        self.payload = dict(payload) if payload is not None else None
+        super().__init__()
+
+    def format_message(self) -> str:
+        rule_label = self.rule_type or "<missing>"
+        return f"Failed to deserialize validation rule '{rule_label}': {self.reason}"

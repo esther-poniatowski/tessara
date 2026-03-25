@@ -12,6 +12,7 @@ ParamComposer
 from typing import List
 
 from tessara.core.parameters import ParameterSet
+from tessara.handling.tree import ParameterTree
 
 
 class ParamComposer:
@@ -111,13 +112,7 @@ class ParamComposer:
         >>> params2 = ParameterSet(param2=Param(default='foo'))
         >>> merged = ParamComposer.merge(params1, params2)
         """
-        merged = original.copy()
-        for name, param in other.data.items():
-            if name not in merged.data or override:
-                merged.data[name] = param
-        for rule, targets in other.relation_rules:
-            merged.relation_rules.append((rule, targets))
-        return merged
+        return ParameterTree.merge(original, other, override=override)
 
     def compose(self) -> ParameterSet:
         """

@@ -29,6 +29,7 @@ from tessara.validation.rules import Rule
 from tessara.core.errors.validation import GlobalValidationError, ValidationError, CheckError
 from tessara.core.parameters import ParameterSet
 from tessara.core.types import Targets
+from tessara.handling.tree import ParameterTree
 
 Values = List[Any] | Dict[str, Any]
 """Type alias for values to validate against a rule, retrieved from the target names."""
@@ -176,8 +177,10 @@ class Checker:
             with the same keys.
         """
         if self.argument_mode == self.ARGS_MODE: # `args` mode
-            return [params[name].value for name in self.targets]
-        return {name: params[name].value for name in self.targets} # `kwargs` mode
+            tree = ParameterTree(params)
+            return [tree.get_value(name) for name in self.targets]
+        tree = ParameterTree(params)
+        return {alias: tree.get_value(name) for name, alias in self.targets.items()} # `kwargs` mode
 
     def check(self, params: ParameterSet) -> ValidationError | None:
         """

@@ -14,9 +14,10 @@ ParamAssigner
 from pathlib import Path
 from typing import Any, List, Protocol, Union
 
-from tessara.core.parameters import ParameterSet, Param, resolve_path
+from tessara.core.parameters import ParameterSet, Param, ParamGrid
 from tessara.core.errors.handling import UnknownParameterError
 from tessara.handling.config_io import load_yaml
+from tessara.handling.tree import ParameterTree
 
 
 class Config(Protocol):
@@ -42,6 +43,94 @@ class Config(Protocol):
 
     def __contains__(self, key: str) -> bool:
         ...
+
+
+class _AssignmentStrategy(Protocol):
+    def supports(self, target: object) -> bool:
+        ...
+
+    def apply(
+        self,
+        assigner: "ParamAssigner",
+        target: object,
+        value: Any,
+        recursive: bool,
+        strict: bool,
+        path: str,
+    ) -> None:
+        ...
+
+
+class _ParamStrategy:
+    def supports(self, target: object) -> bool:
+        return isinstance(target, Param)
+
+    def apply(
+        self,
+        assigner: "ParamAssigner",
+        target: object,
+        value: Any,
+        recursive: bool,
+        strict: bool,
+        path: str,
+    ) -> None:
+        assert isinstance(target, Param)
+        target.set(value, strict=strict)
+
+
+class _ParamGridStrategy:
+    def supports(self, target: object) -> bool:
+        return isinstance(target, ParamGrid)
+
+    def apply(
+        self,
+        assigner: "ParamAssigner",
+        target: object,
+        value: Any,
+        recursive: bool,
+        strict: bool,
+        path: str,
+    ) -> None:
+        assert isinstance(target, ParamGrid)
+        if not isinstance(value, (list, tuple)):
+            raise TypeError(
+                f"Config value for sweep parameter '{path}' must be a list or tuple, "
+                f"got {type(value).__name__}."
+            )
+        sweep_values = list(value)
+        if strict:
+            for candidate in sweep_values:
+                target.make_param(candidate)
+        target.sweep_values = sweep_values
+
+
+class _ParameterSetStrategy:
+    def supports(self, target: object) -> bool:
+        return isinstance(target, ParameterSet)
+
+    def apply(
+        self,
+        assigner: "ParamAssigner",
+        target: object,
+        value: Any,
+        recursive: bool,
+        strict: bool,
+        path: str,
+    ) -> None:
+        assert isinstance(target, ParameterSet)
+        config = _as_config(value, path)
+        assigner._apply_config_recursive(target, config, recursive, strict, path=path)
+
+
+def _as_config(value: Any, path: str) -> Config:
+    if isinstance(value, dict):
+        return value
+    if hasattr(value, "keys") and hasattr(value, "__getitem__"):
+        return value
+    raise TypeError(
+        f"Config value for nested ParameterSet '{path or '<root>'}' must be a mapping-like object, "
+        f"got {type(value).__name__}."
+    )
 
 
 class ParamAssigner:
@@ -87,6 +176,12 @@ class ParamAssigner:
 
     def __init__(self, params: ParameterSet) -> None:
         self.params = params
+        self._tree = ParameterTree(params)
+        self._strategies: tuple[_AssignmentStrategy, ...] = (
+            _ParameterSetStrategy(),
+            _ParamGridStrategy(),
+            _ParamStrategy(),
+        )
 
     def set(self, name: str, value: Any) -> "ParamAssigner":
         """
@@ -113,21 +208,8 @@ class ParamAssigner:
         -------
         If a value is already set, the initial value will be overridden.
         """
-        if "." in name:
-            parts = name.split(".")
-            parent = resolve_path(self.params, ".".join(parts[:-1]))
-            if not isinstance(parent, ParameterSet):
-                raise UnknownParameterError(
-                    f"'{'.'.join(parts[:-1])}' is not a nested ParameterSet in '{name}'."
-                )
-            final_name = parts[-1]
-            if final_name not in parent.data:
-                raise UnknownParameterError(f"No parameter '{final_name}' in the ParameterSet.")
-            parent.data[final_name].set(value)
-        elif name in self.params:
-            self.params[name].set(value)
-        else:
-            raise UnknownParameterError(f"No parameter '{name}' in the ParameterSet.")
+        target = self._tree.get_node(name)
+        self._apply_target(target, value, recursive=True, strict=False, path=name)
         return self
 
     def apply_config(
@@ -185,14 +267,22 @@ class ParamAssigner:
         for key in matching_keys:
             target = params.data[key]
             value = config[key]
-            if recursive and isinstance(target, ParameterSet) and isinstance(value, dict):
-                # Recursively apply to nested ParameterSet
-                next_path = f"{path}.{key}" if path else key
-                self._apply_config_recursive(target, value, recursive, strict, next_path)
-            elif hasattr(target, "set"):
-                target.set(value)
-            else:
-                params.data[key] = value
+            next_path = f"{path}.{key}" if path else key
+            self._apply_target(target, value, recursive, strict, next_path)
+
+    def _apply_target(
+        self,
+        target: object,
+        value: Any,
+        recursive: bool,
+        strict: bool,
+        path: str,
+    ) -> None:
+        for strategy in self._strategies:
+            if strategy.supports(target):
+                strategy.apply(self, target, value, recursive, strict, path)
+                return
+        raise TypeError(f"Unsupported parameter node at '{path}': {type(target).__name__}")
 
     def from_yaml(
         self,

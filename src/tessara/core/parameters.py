@@ -28,6 +28,7 @@ Notes
 from collections import UserDict
 from collections.abc import Iterable
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any, Optional, Self, Dict, List
 
 from tessara.core.errors.handling import (
@@ -71,6 +72,13 @@ class _Unset:
 
 
 _UNSET = _Unset()
+
+
+@dataclass(frozen=True)
+class SweepMaterializationPolicy:
+    """Policy controlling how sweep candidates become concrete Param objects."""
+
+    strict: bool = True
 
 
 # --- Path Resolution Utility ---------------------------------------------------------------------
@@ -877,11 +885,18 @@ class ParamGrid:
     >>> param = ParamGrid(Param(rules=TypeRule(int)), sweep_values=[1, 2, 3])
     """
 
-    def __init__(self, param: Param, sweep_values: Optional[List[Any]] = None) -> None:
+    def __init__(
+        self,
+        param: Param,
+        sweep_values: Optional[List[Any]] = None,
+        *,
+        policy: Optional[SweepMaterializationPolicy] = None,
+    ) -> None:
         if not isinstance(param, Param):
             raise TypeError("`param` must be an instance of `Param`.")
         self.param = param
         self.sweep_values = sweep_values or []
+        self.policy = policy or SweepMaterializationPolicy()
 
     def register_rule(self, rule: RuleProtocol) -> None:
         """Delegate rule registration to the underlying ``Param`` instance."""
@@ -894,7 +909,7 @@ class ParamGrid:
     def make_param(self, value: Any) -> Param:
         """Create a Param instance with a specific sweep value."""
         param = self.param.copy()
-        param.set(value)
+        param.set(value, strict=self.policy.strict)
         return param
 
     def generate_params(self) -> Iterable[Param]:

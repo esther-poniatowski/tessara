@@ -12,8 +12,8 @@ ParamSweeper
 from itertools import product
 from typing import Any, List, Iterator, Generator
 
-from tessara.core.parameters import ParameterSet, ParamGrid, Param, resolve_path
-from tessara.core.errors.handling import UnknownParameterError
+from tessara.core.parameters import ParameterSet, ParamGrid, Param
+from tessara.handling.tree import ParameterTree
 
 
 class ParamSweeper:
@@ -61,6 +61,7 @@ class ParamSweeper:
 
     def __init__(self, params: ParameterSet) -> None:
         self.params = params
+        self._tree = ParameterTree(params)
 
     def _collect_sweep_params(
         self,
@@ -69,25 +70,14 @@ class ParamSweeper:
     ) -> List[tuple[str, ParamGrid]]:
         """Collect ParamGrid objects with deterministic ordering."""
         items: List[tuple[str, ParamGrid]] = []
-        for key in sorted(params.data.keys()):
-            value = params.data[key]
-            if isinstance(value, ParameterSet):
-                items.extend(self._collect_sweep_params(value, prefix + (key,)))
-            elif isinstance(value, ParamGrid):
-                path = ".".join(prefix + (key,))
+        for path, value in self._tree.iter_leaf_nodes(params, prefix):
+            if isinstance(value, ParamGrid):
                 items.append((path, value))
         return items
 
     def _set_param_by_path(self, params: ParameterSet, path: str, param: Param) -> None:
         """Set a Param at a dotted path in a nested ParameterSet."""
-        parts = path.split(".")
-        if len(parts) == 1:
-            params.data[parts[0]] = param
-            return
-        parent = resolve_path(params, ".".join(parts[:-1]))
-        if not isinstance(parent, ParameterSet):
-            raise UnknownParameterError(f"No parameter '{path}' in the ParameterSet.")
-        parent.data[parts[-1]] = param
+        ParameterTree(params).replace_node(path, param)
 
     def generate(self) -> Generator[ParameterSet, None, None]:
         """
