@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/python-supported-blue)](https://www.python.org/)
 [![License: GPL](https://img.shields.io/badge/License-GPL-yellow.svg)](https://opensource.org/licenses/GPL-3.0)
 
-Parameter management system for declaring, validating, and composing structured parameter sets.
+Defines and validates structured parameter sets for complex configurations.
 
 ---
 

@@ -18,7 +18,7 @@ authors = [{name = "Esther Poniatowski", email = "esther.poniatowski@ens.psl.eu"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
 readme = {file = "README.md", content-type = "text/markdown"}
-description = "Parameter management system for declarative definition, constraint enforcement, and modular composition "
+description = "Defines and validates structured parameter sets for complex configurations."
 keywords = ["schema", "validation", "parameters", "configuration", "type-checking", "modular-architecture"]
 classifiers = [
     "Programming Language :: Python :: 3",
