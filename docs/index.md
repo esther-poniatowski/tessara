@@ -1,14 +1,20 @@
-# Tessara Documentation
+# Tessara
 
-**Tessara** is a parameter management library for scientific computing workflows.
-Tessara provides type-safe parameter definitions, validation rules, and sweep generation.
+Defines and validates structured parameter sets for complex configurations.
 
 ```{toctree}
 :maxdepth: 2
-:caption: Contents:
+:caption: User Guide
 
-guide/quickstart
+guide/installation
+guide/usage
 guide/concepts
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: API Reference
+
 api/index
 ```
 
@@ -16,37 +22,5 @@ api/index
 :maxdepth: 1
 :caption: Architecture Decisions
 
-adr/1-sweeping-parameters
 adr/adr-template
 ```
-
-## Features
-
-- **Type-safe parameters**: Define parameters with types, defaults, and constraints
-- **Validation rules**: Built-in and custom validation with composite rules (And/Or)
-- **Parameter sweeps**: Generator-based iteration over parameter grids
-- **YAML configuration**: Load parameters from configuration files
-- **Serialization**: Convert parameter sets to/from dictionaries
-
-## Quick Example
-
-```python
-from tessara import ParameterSet, Param, ParamGrid, ParamSweeper
-
-# Define parameters with validation
-params = ParameterSet(
-    learning_rate=Param(default=0.01),
-    epochs=Param(default=100),
-    batch_size=ParamGrid(Param(), sweep_values=[32, 64, 128]),
-)
-
-# Sweep over parameter combinations
-for combo in ParamSweeper(params):
-    print(combo.to_dict(values_only=True))
-```
-
-## Indices and tables
-
-* {ref}`genindex`
-* {ref}`modindex`
-* {ref}`search`
