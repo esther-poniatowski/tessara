@@ -46,9 +46,15 @@ subtle bugs.
 
 - [ ] **Typed parameters**: Define parameters with type annotations, default values,
   and validation constraints.
-- [ ] **Dot-notation access**: Read and modify parameters through attribute-style
-  access.
+- [ ] **Dot-notation access**: Read and modify parameters and nested fields through
+  attribute-style access.
 - [ ] **Composable sets**: Combine, inherit, and override parameter groups.
+- [ ] **Flexible defaults**: Set default values at definition time or override them at
+  runtime.
+- [ ] **Schema validation**: Enforce constraints on individual parameters via type hints
+  for compact definitions.
+- [ ] **Relational validation**: Enforce consistency across parameters through
+  relational rules.
 - [ ] **Parameter sweeps**: Generate parameter grids and sweep combinations with
   `ParamGrid` and `ParamSweeper`.
 - [ ] **YAML configuration**: Load and save parameter sets from structured YAML files.
