@@ -36,6 +36,7 @@ class Config(Protocol):
         Check if a key is present in the configuration object.
     """
     def keys(self) -> List[str]:
+        """Return the configuration keys."""
         ...
 
     def __getitem__(self, key: str) -> Any:
@@ -47,6 +48,18 @@ class Config(Protocol):
 
 class _AssignmentStrategy(Protocol):
     def supports(self, target: object) -> bool:
+        """Return ``True`` if this strategy can handle *target*.
+
+        Parameters
+        ----------
+        target : object
+            Parameter node to test.
+
+        Returns
+        -------
+        bool
+            Whether this strategy can handle *target*.
+        """
         ...
 
     def apply(
@@ -58,11 +71,40 @@ class _AssignmentStrategy(Protocol):
         strict: bool,
         path: str,
     ) -> None:
+        """Apply *value* to *target* using the assigner context.
+
+        Parameters
+        ----------
+        assigner : ParamAssigner
+            Owning assigner (provides recursive application).
+        target : object
+            Parameter node to assign to.
+        value : Any
+            Configuration value to apply.
+        recursive : bool
+            Whether to recurse into nested parameter sets.
+        strict : bool
+            Whether to validate values and reject unknown keys.
+        path : str
+            Dot-separated path for error messages.
+        """
         ...
 
 
 class _ParamStrategy:
     def supports(self, target: object) -> bool:
+        """Return ``True`` for Param targets.
+
+        Parameters
+        ----------
+        target : object
+            Parameter node to test.
+
+        Returns
+        -------
+        bool
+            Whether *target* is a ``Param``.
+        """
         return isinstance(target, Param)
 
     def apply(
@@ -74,12 +116,41 @@ class _ParamStrategy:
         strict: bool,
         path: str,
     ) -> None:
+        """Set *value* directly on the Param.
+
+        Parameters
+        ----------
+        assigner : ParamAssigner
+            Owning assigner (unused for leaf assignment).
+        target : object
+            ``Param`` instance to update.
+        value : Any
+            Scalar value to assign.
+        recursive : bool
+            Ignored for leaf parameters.
+        strict : bool
+            Whether to validate the value against the parameter constraints.
+        path : str
+            Dot-separated path for error messages.
+        """
         assert isinstance(target, Param)
         target.set(value, strict=strict)
 
 
 class _ParamGridStrategy:
     def supports(self, target: object) -> bool:
+        """Return ``True`` for ParamGrid targets.
+
+        Parameters
+        ----------
+        target : object
+            Parameter node to test.
+
+        Returns
+        -------
+        bool
+            Whether *target* is a ``ParamGrid``.
+        """
         return isinstance(target, ParamGrid)
 
     def apply(
@@ -91,6 +162,23 @@ class _ParamGridStrategy:
         strict: bool,
         path: str,
     ) -> None:
+        """Replace sweep values on the ParamGrid.
+
+        Parameters
+        ----------
+        assigner : ParamAssigner
+            Owning assigner (unused for grid assignment).
+        target : object
+            ``ParamGrid`` instance to update.
+        value : Any
+            List or tuple of sweep values to assign.
+        recursive : bool
+            Ignored for grid parameters.
+        strict : bool
+            Whether to validate each candidate value.
+        path : str
+            Dot-separated path for error messages.
+        """
         assert isinstance(target, ParamGrid)
         if not isinstance(value, (list, tuple)):
             raise TypeError(
@@ -106,6 +194,18 @@ class _ParamGridStrategy:
 
 class _ParameterSetStrategy:
     def supports(self, target: object) -> bool:
+        """Return ``True`` for ParameterSet targets.
+
+        Parameters
+        ----------
+        target : object
+            Parameter node to test.
+
+        Returns
+        -------
+        bool
+            Whether *target* is a ``ParameterSet``.
+        """
         return isinstance(target, ParameterSet)
 
     def apply(
@@ -117,6 +217,23 @@ class _ParameterSetStrategy:
         strict: bool,
         path: str,
     ) -> None:
+        """Recurse into the nested ParameterSet with *value* as sub-config.
+
+        Parameters
+        ----------
+        assigner : ParamAssigner
+            Owning assigner (used to recurse into children).
+        target : object
+            ``ParameterSet`` instance to recurse into.
+        value : Any
+            Mapping-like sub-configuration for the nested set.
+        recursive : bool
+            Whether to continue recursing into deeper levels.
+        strict : bool
+            Whether to reject unknown keys and validate values.
+        path : str
+            Dot-separated path for error messages.
+        """
         assert isinstance(target, ParameterSet)
         config = _as_config(value, path)
         assigner._apply_config_recursive(target, config, recursive, strict, path=path)
@@ -138,6 +255,11 @@ class ParamAssigner:
     Assign specific values to a set of parameters.
 
     Supports loading configuration from YAML files, OmegaConf objects, or dictionaries.
+
+    Parameters
+    ----------
+    params : ParameterSet
+        Parameters to bind to a configuration.
 
     Attributes
     ----------
@@ -227,6 +349,8 @@ class ParamAssigner:
             Configuration values to apply (dict-like object).
         recursive : bool, default True
             If True, recursively apply nested dictionaries to nested ParameterSets.
+        strict : bool, default False
+            If True, raise on unknown config keys and validate values.
 
         Returns
         -------
@@ -249,7 +373,21 @@ class ParamAssigner:
         strict: bool,
         path: str,
     ) -> None:
-        """Recursively apply configuration to nested ParameterSets."""
+        """Recursively apply configuration to nested ParameterSets.
+
+        Parameters
+        ----------
+        params : ParameterSet
+            Target parameter set.
+        config : Config
+            Configuration mapping to apply.
+        recursive : bool
+            Whether to recurse into nested sets.
+        strict : bool
+            Whether to reject unknown keys.
+        path : str
+            Dot-separated path prefix for error messages.
+        """
         param_keys = set(params.keys())
         config_keys = set(config.keys())
         if strict:
@@ -297,6 +435,10 @@ class ParamAssigner:
         ----------
         path : str or Path
             Path to the YAML configuration file.
+        prefer_omegaconf : bool, default True
+            Use OmegaConf for loading if available.
+        strict : bool, default False
+            If True, raise on unknown config keys.
 
         Returns
         -------
@@ -310,14 +452,14 @@ class ParamAssigner:
         FileNotFoundError
             If the YAML file does not exist.
 
-        Examples
-        --------
-        >>> assigner = ParamAssigner(params).from_yaml('config.yaml')
-
         Notes
         -----
         If OmegaConf is installed, it will be used for loading (supports variable
         interpolation and merging). Otherwise, falls back to PyYAML.
+
+        Examples
+        --------
+        >>> assigner = ParamAssigner(params).from_yaml('config.yaml')
         """
         config = load_yaml(path, prefer_omegaconf=prefer_omegaconf)
         return self.from_dict(config, strict=strict)
@@ -330,6 +472,8 @@ class ParamAssigner:
         ----------
         data : dict
             Dictionary of parameter names to values.
+        strict : bool, default False
+            If True, raise on unknown config keys.
 
         Returns
         -------

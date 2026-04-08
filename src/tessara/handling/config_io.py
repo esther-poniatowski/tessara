@@ -24,6 +24,13 @@ def load_yaml(path: str | Path, prefer_omegaconf: bool = True) -> dict:
     -------
     dict
         Loaded configuration.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the YAML file does not exist at *path*.
+    ImportError
+        If neither ``omegaconf`` nor ``pyyaml`` is installed.
     """
     path = Path(path)
     if not path.exists():

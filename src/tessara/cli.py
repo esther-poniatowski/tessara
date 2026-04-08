@@ -3,14 +3,17 @@ Command-line interface for the `tessara` package.
 
 Defines commands available via `python -m tessara` or `tessara` if installed as a script.
 
-Commands
---------
-info : Display diagnostic information.
-
 See Also
 --------
 typer.Typer
     Library for building CLI applications: https://typer.tiangolo.com/
+
+Functions
+---------
+cli_info
+    Display version and platform diagnostics.
+main_callback
+    Root command for the package command-line interface.
 """
 
 import typer
@@ -31,7 +34,13 @@ def main_callback(
         False, "--version", "-v", help="Show the package version and exit."
     )
 ) -> None:
-    """Root command for the package command-line interface."""
+    """Root command for the package command-line interface.
+
+    Parameters
+    ----------
+    version : bool
+        Print the version string and exit.
+    """
     if version:
         typer.echo(__version__)
         raise typer.Exit()

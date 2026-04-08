@@ -24,6 +24,11 @@ class ParamSweeper:
     using cartesian product. Supports both eager (list) and lazy (generator)
     evaluation.
 
+    Parameters
+    ----------
+    params : ParameterSet
+        Parameter set containing both static Params and ParamGrid objects.
+
     Attributes
     ----------
     params : ParameterSet
@@ -40,6 +45,12 @@ class ParamSweeper:
     __len__() -> int
         Return the total number of combinations.
 
+    Notes
+    -----
+    - Parameter names are sorted for deterministic ordering across runs.
+    - The generator pattern allows memory-efficient iteration over large sweeps.
+    - Each generated ParameterSet is a deep copy with the sweep values applied.
+
     Examples
     --------
     >>> params = ParameterSet(
@@ -51,12 +62,6 @@ class ParamSweeper:
     ...     print(combo.to_dict(values_only=True))
     {'lr': 0.01, 'epochs': 100}
     {'lr': 0.001, 'epochs': 100}
-
-    Notes
-    -----
-    - Parameter names are sorted for deterministic ordering across runs.
-    - The generator pattern allows memory-efficient iteration over large sweeps.
-    - Each generated ParameterSet is a deep copy with the sweep values applied.
     """
 
     def __init__(self, params: ParameterSet) -> None:
@@ -68,7 +73,20 @@ class ParamSweeper:
         params: ParameterSet,
         prefix: tuple[str, ...] = (),
     ) -> List[tuple[str, ParamGrid]]:
-        """Collect ParamGrid objects with deterministic ordering."""
+        """Collect ParamGrid objects with deterministic ordering.
+
+        Parameters
+        ----------
+        params : ParameterSet
+            Set to scan for ParamGrid instances.
+        prefix : tuple[str, ...], optional
+            Path prefix for nested sets.
+
+        Returns
+        -------
+        List[tuple[str, ParamGrid]]
+            Pairs of dotted path and grid object.
+        """
         items: List[tuple[str, ParamGrid]] = []
         for path, value in self._tree.iter_leaf_nodes(params, prefix):
             if isinstance(value, ParamGrid):
@@ -76,7 +94,17 @@ class ParamSweeper:
         return items
 
     def _set_param_by_path(self, params: ParameterSet, path: str, param: Param) -> None:
-        """Set a Param at a dotted path in a nested ParameterSet."""
+        """Set a Param at a dotted path in a nested ParameterSet.
+
+        Parameters
+        ----------
+        params : ParameterSet
+            Root parameter set.
+        path : str
+            Dot-separated path to the target node.
+        param : Param
+            Param instance to place at *path*.
+        """
         ParameterTree(params).replace_node(path, param)
 
     def generate(self) -> Generator[ParameterSet, None, None]:
@@ -123,7 +151,13 @@ class ParamSweeper:
         return list(self.generate())
 
     def __iter__(self) -> Iterator[ParameterSet]:
-        """Make the sweeper iterable."""
+        """Iterate over all parameter combinations via ``generate``.
+
+        Returns
+        -------
+        Iterator[ParameterSet]
+            Iterator over generated combinations.
+        """
         return self.generate()
 
     def __len__(self) -> int:
@@ -131,6 +165,11 @@ class ParamSweeper:
         Return the total number of combinations.
 
         Uses multiplication to avoid generating all combinations.
+
+        Returns
+        -------
+        int
+            Total number of sweep combinations.
         """
         sweep_items = self._collect_sweep_params(self.params)
         if not sweep_items:

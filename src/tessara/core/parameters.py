@@ -4,6 +4,13 @@ tessara.core.parameters
 
 Core parameter management classes for defining, validating, and organizing parameters.
 
+Notes
+-----
+- Parameters support validation rules via the `rules` attribute
+- Nested ParameterSets can be accessed using dot notation (e.g., ``params.model.lr``)
+- Values can be set with optional strict validation via ``param.set(value, strict=True)``
+- Use ``param.is_set`` to distinguish between "not set" and "explicitly set to None"
+
 Classes
 -------
 Param
@@ -17,16 +24,9 @@ Functions
 ---------
 resolve_path
     Traverse a nested ParameterSet structure using a dot-separated path.
-
-Notes
------
-- Parameters support validation rules via the `rules` attribute
-- Nested ParameterSets can be accessed using dot notation (e.g., ``params.model.lr``)
-- Values can be set with optional strict validation via ``param.set(value, strict=True)``
-- Use ``param.is_set`` to distinguish between "not set" and "explicitly set to None"
 """
 from collections import UserDict
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Optional, Self, Dict, List
@@ -76,7 +76,13 @@ _UNSET = _Unset()
 
 @dataclass(frozen=True)
 class SweepMaterializationPolicy:
-    """Policy controlling how sweep candidates become concrete Param objects."""
+    """Policy controlling how sweep candidates become concrete Param objects.
+
+    Attributes
+    ----------
+    strict : bool
+        Whether to validate values during materialization.
+    """
 
     strict: bool = True
 
@@ -129,6 +135,13 @@ class Param:
     The actual value of the parameter has to be set at runtime, and it will be validated against the
     rules defined in the instance (if the strict mode is enabled).
 
+    Parameters
+    ----------
+    default : Any, optional
+        Default value for the parameter.
+    rules : Iterable[RuleProtocol], optional
+        Initial validation rules.
+
     Attributes
     ----------
     value : Any
@@ -146,6 +159,16 @@ class Param:
         Retrieve the set value or default.
     register_rule(rule: RuleProtocol)
         Register a rule to validate the parameter.
+
+    Notes
+    -----
+    The ``Param`` class serves as a static representation of a parameter with constraints. It does
+    not perform validation itself.
+
+    See Also
+    --------
+    RuleProtocol
+        Protocol for validation rules.
 
     Examples
     --------
@@ -173,16 +196,6 @@ class Param:
     >>> param.set(6)
     >>> param.get()
     6
-
-    Notes
-    -----
-    The ``Param`` class serves as a static representation of a parameter with constraints. It does
-    not perform validation itself.
-
-    See Also
-    --------
-    RuleProtocol
-        Protocol for validation rules.
     """
     def __init__(
         self,
@@ -227,7 +240,15 @@ class Param:
         """
         Validate a value against all registered rules.
 
-        Raises ValidationError on the first failing rule.
+        Parameters
+        ----------
+        value : Any
+            Value to validate.
+
+        Raises
+        ------
+        ValidationError
+            On the first failing rule.
         """
         if not self.rules:
             return
@@ -239,23 +260,36 @@ class Param:
     @property
     def value(self) -> Any:
         """
-        The explicitly set value, or None if not set.
+        Return the explicitly set value, or None if not set.
 
-        Note: Use ``is_set`` to distinguish between "set to None" and "not set".
+        Returns
+        -------
+        Any
+            The runtime value, or ``None`` when unset.
+            Use ``is_set`` to distinguish between "set to None" and "not set".
         """
         return None if self._value is _UNSET else self._value
 
     @property
     def is_set(self) -> bool:
-        """Return True if the value has been explicitly set (even to None)."""
+        """Return ``True`` if the value has been explicitly set (even to ``None``).
+
+        Returns
+        -------
+        bool
+            Whether a runtime value has been assigned.
+        """
         return self._value is not _UNSET
 
     def get(self) -> Any:
         """
         Retrieve the current value or default.
 
-        Returns the runtime value if explicitly set (even if None),
-        otherwise returns the default value.
+        Returns
+        -------
+        Any
+            The runtime value if explicitly set (even if ``None``),
+            otherwise the default value.
         """
         return self._value if self._value is not _UNSET else self.default
 
@@ -282,7 +316,13 @@ class Param:
         self.rules.append(rule)
 
     def copy(self) -> Self:
-        """Create a deep copy of the parameter, namely all the rules. Used to set a new value."""
+        """Create a deep copy of the parameter, namely all the rules. Used to set a new value.
+
+        Returns
+        -------
+        Self
+            Independent copy of this parameter.
+        """
         return deepcopy(self)
 
     def to_dict(self, registry: Optional[RuleRegistryProtocol] = None) -> Dict[str, Any]:
@@ -366,6 +406,18 @@ class ParameterSet(UserDict[str, Param]):
     """
     Manage a collection of parameters.
 
+    Parameters
+    ----------
+    *args : dict
+        Positional arguments to initialize the parameter set.
+        Used to pass a dictionary as the first argument.
+    relation_rules : List[RelationRule], optional
+        Relation rules to apply to the parameters. Each element is a tuple (rule, targets).
+    **kwargs : Param
+        Keyword arguments to initialize the parameter set.
+        If the values are not Param objects, they will be converted to Param objects and the
+        provided value will serve as the 'default' attribute of the Param object.
+
     Attributes
     ----------
     data : Dict[str, Param]
@@ -379,25 +431,6 @@ class ParameterSet(UserDict[str, Param]):
         Retrieve a parameter value by name, supporting dot notation.
     set(name, value)
         Set the value of an existing parameter by name (supports dot notation).
-
-    Examples
-    --------
-    Create a parameter set with two parameters:
-
-    >>> params = ParameterSet(
-    ...     param1=Param(default=42, rules=RangeRule(gt=0)),
-    ...     param2=Param(rules=TypeRule(str))
-    ... )
-
-    Retrieve a parameter value:
-
-    >>> params.get('param1')
-    42
-
-    Access nested Param or ParameterSet objects via dot notation:
-
-    >>> params.model.lr        # returns the Param object
-    >>> params.model.lr.get()  # returns its value
 
     Notes
     -----
@@ -418,43 +451,31 @@ class ParameterSet(UserDict[str, Param]):
         Custom parameter class with validation constraints.
     collections.UserDict
         Inherit from this class to create a dictionary-like object.
+
+    Examples
+    --------
+    Create a parameter set with two parameters:
+
+    >>> params = ParameterSet(
+    ...     param1=Param(default=42, rules=RangeRule(gt=0)),
+    ...     param2=Param(rules=TypeRule(str))
+    ... )
+
+    Retrieve a parameter value:
+
+    >>> params.get('param1')
+    42
+
+    Access nested Param or ParameterSet objects via dot notation:
+
+    >>> params.model.lr        # returns the Param object
+    >>> params.model.lr.get()  # returns its value
     """
 
     # Attributes that belong to the object itself, not to be treated as parameter keys
     _RESERVED_ATTRS = frozenset({"data", "relation_rules", "_RESERVED_ATTRS"})
 
     def __init__(self, *args, relation_rules: Optional[List[RelationRule]] = None, **kwargs):
-        """
-        Initialize parameters from a dictionary or keyword arguments.
-
-        Arguments
-        ---------
-        *args : Tuple
-            Positional arguments to initialize the parameter set.
-            Used to pass a dictionary as the first argument.
-        relation_rules : List[RelationRule]
-            Relation rules to apply to the parameters. Each element is a tuple (rule, targets).
-            ``rule``: MultiValueRuleProtocol instance to apply to the parameters.
-            ``targets``: Specification of the parameters targeted by the rule. Possibilities:
-            - List of parameter names (strings).
-            - Dictionary with parameter names as keys and corresponding variable names as values (in
-              the signature of the rule function).
-        **kwargs : Dict[str, Param]
-            Keyword arguments to initialize the parameter set.
-            Used to pass parameters directly as keyword arguments.
-            If the values are not Param objects, they will be converted to Param objects and the
-            provided value will serve as the 'default' attribute of the Param object.
-
-        Examples
-        --------
-        Initialize parameters from a dictionary:
-
-        >>> params = ParameterSet({'param1': Param(default=42), 'param2': Param(default='foo')})
-
-        Initialize parameters from keyword arguments:
-
-        >>> params = ParameterSet(param1=Param(default=42), param2=Param(default='foo'))
-        """
         super().__init__()  # initialize with the parent class constructor (UserDict)
         candidates = args[0] if args and isinstance(args[0], dict) else kwargs
         for param in candidates:
@@ -473,6 +494,8 @@ class ParameterSet(UserDict[str, Param]):
 
         Arguments
         ---------
+        name : str
+            Unique key for the parameter.
         param : Any
             If ``param`` is already a Param or ParameterSet, it will be added directly.
             Otherwise, a new Param object will be created with the provided value as the default.
@@ -485,18 +508,31 @@ class ParameterSet(UserDict[str, Param]):
             self.data[name] = Param(default=param)
 
     def remove(self, name: str):
-        """Remove a parameter from the set by its name."""
+        """Remove a parameter from the set by its name.
+
+        Parameters
+        ----------
+        name : str
+            Key of the parameter to remove.
+        """
         self.data.pop(name, None)
 
     def __setitem__(self, name: str, param: Any) -> None:
         """Set a full Param instance (from a Param instance or a single value).
-        Override the ``__setitem__`` method to ensure that the value is a valid Param object.
 
+        Override the ``__setitem__`` method to ensure that the value is a valid Param object.
         This method is triggered with the following syntax: ``params['key'] = value``.
+
+        Parameters
+        ----------
+        name : str
+            Parameter key.
+        param : Any
+            Param instance or raw value to assign.
         """
         self.add(name, param)
 
-    def __getattr__(self, name: str) -> Any:
+    def __getattr__(self, name: str) -> "Param | ParameterSet":
         """
         Access parameters or nested ParameterSets using dot notation.
 
@@ -717,6 +753,12 @@ class ParameterSet(UserDict[str, Param]):
         targets : Targets
             Names of the parameters targeted by the rule (list or mapping).
 
+        Notes
+        -----
+        The format of the targets determines the internal call to the rule function.
+        If the targets are provided as a list, the parameters are passed as positional arguments.
+        If the targets are provided as a dictionary, the parameters are passed as keyword arguments.
+
         Examples
         --------
         >>> params = ParameterSet(param1=Param(default=1), param2=Param(default=2))
@@ -725,12 +767,6 @@ class ParameterSet(UserDict[str, Param]):
         >>> from tessara.validation.rules import MultiValueRule
         >>> greater_than_rule = MultiValueRule(is_greater_than)
         >>> params.register_relation_rule(greater_than_rule, ['param1', 'param2'])
-
-        Notes
-        -----
-        The format of the targets determines the internal call to the rule function.
-        If the targets are provided as a list, the parameters are passed as positional arguments.
-        If the targets are provided as a dictionary, the parameters are passed as keyword arguments.
         """
         if not isinstance(rule, MultiValueRuleProtocol):
             raise TypeError(
@@ -742,7 +778,13 @@ class ParameterSet(UserDict[str, Param]):
         self.relation_rules.append((rule, targets))
 
     def copy(self) -> Self:
-        """Create a deep copy of the parameter set, including all nested ParameterSets and Params."""
+        """Create a deep copy of the parameter set, including all nested ParameterSets and Params.
+
+        Returns
+        -------
+        Self
+            Independent copy of this parameter set.
+        """
         return deepcopy(self)
 
     def to_dict(self, values_only: bool = False) -> Dict[str, Any]:
@@ -864,6 +906,15 @@ class ParamGrid:
     The sweep values can be set either at the moment of defining the ParamGrid instance, or
     at runtime, for instance to define sweep values from a configuration object.
 
+    Parameters
+    ----------
+    param : Param
+        Underlying parameter that defines validation rules.
+    sweep_values : List[Any], optional
+        Values over which the parameter should be swept.
+    policy : SweepMaterializationPolicy, optional
+        Policy controlling how sweep candidates become concrete Param objects.
+
     Attributes
     ----------
     param : Param
@@ -899,26 +950,49 @@ class ParamGrid:
         self.policy = policy or SweepMaterializationPolicy()
 
     def register_rule(self, rule: RuleProtocol) -> None:
-        """Delegate rule registration to the underlying ``Param`` instance."""
+        """Delegate rule registration to the underlying ``Param`` instance.
+
+        Parameters
+        ----------
+        rule : RuleProtocol
+            Validation rule to add.
+        """
         self.param.register_rule(rule)
 
     def iter_values(self) -> Iterable[Any]:
-        """Iterate over sweep values."""
+        """Iterate over sweep values.
+
+        Returns
+        -------
+        Iterable[Any]
+            Iterator over the configured sweep values.
+        """
         return iter(self.sweep_values)
 
     def make_param(self, value: Any) -> Param:
-        """Create a Param instance with a specific sweep value."""
+        """Create a Param instance with a specific sweep value.
+
+        Parameters
+        ----------
+        value : Any
+            Concrete value drawn from the sweep grid.
+
+        Returns
+        -------
+        Param
+            Deep copy of the base parameter with *value* set.
+        """
         param = self.param.copy()
         param.set(value, strict=self.policy.strict)
         return param
 
-    def generate_params(self) -> Iterable[Param]:
+    def generate_params(self) -> Generator[Param, None, None]:
         """
         Generate ``Param`` instances for each sweep value while keeping validation rules.
 
-        Returns
-        -------
-        params : Iterable[Param]
+        Yields
+        ------
+        Param
             ``Param`` instances with the values to sweep over. Each instance has the same rules and
             constraints as the base ``Param`` object in the ParamGrid, but with a single value set.
         """

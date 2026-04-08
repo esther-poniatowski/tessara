@@ -19,6 +19,11 @@ class ParamBinder:
     """
     Bind parameters to a function signature.
 
+    Parameters
+    ----------
+    params : ParameterSet
+        Parameters to bind to a function signature.
+
     Attributes
     ----------
     params : ParameterSet
@@ -53,6 +58,13 @@ class ParamBinder:
         The query is performed by filtering the parameters based on the function signature. Only the
         parameters that match the function signature will be included in the bound arguments.
 
+        See Also
+        --------
+        inspect.signature
+            Get the signature of a callable object.
+        inspect.BoundArguments
+            Object representing the bound arguments of a function.
+
         Examples
         --------
         >>> def foo(a, b, c=42):
@@ -62,13 +74,6 @@ class ParamBinder:
         >>> bound_args = binder.query(foo)
         >>> bound_args.arguments
         {'a': 1, 'b': 2}
-
-        See Also
-        --------
-        inspect.signature
-            Get the signature of a callable object.
-        inspect.BoundArguments
-            Object representing the bound arguments of a function.
         """
         sig = inspect.signature(func)
         # Extract values (not Param objects) for parameters matching the function signature

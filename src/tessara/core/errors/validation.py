@@ -28,6 +28,11 @@ class ValidationError(Exception):
     """
     Base class for all validation errors, raised when a parameter is invalid.
 
+    Parameters
+    ----------
+    message : str, optional
+        Explicit error message. When ``None``, ``format_message`` is called.
+
     Attributes
     ----------
     message : str
@@ -38,7 +43,7 @@ class ValidationError(Exception):
     Methods
     -------
     format_message() -> str
-        Formats an error message to display if the rule fails.
+        Format an error message to display if the rule fails.
 
     See Also
     --------
@@ -50,13 +55,17 @@ class ValidationError(Exception):
         super().__init__(self.message) # base Exception constructor
 
     def format_message(self) -> str:
-        """
-        Formats an error message to provide more context if the rule fails.
+        """Format an error message to provide more context if the rule fails.
 
         Override in subclasses to introduce dynamic placeholders to fill with runtime value(s) for
         custom default messages.
 
         Default implementation: Static message.
+
+        Returns
+        -------
+        str
+            Human-readable error message.
         """
         return "Invalid value(s)"
 
@@ -66,6 +75,20 @@ class ValidationError(Exception):
 class TypeValidationError(ValidationError):
     """
     Exception raised when a parameter has an invalid type.
+
+    Parameters
+    ----------
+    value : Any
+        The value that failed type validation.
+    expected_type : type | tuple[type]
+        The required type(s).
+
+    Attributes
+    ----------
+    value : Any
+        The value that failed type validation.
+    expected_type : type | tuple[type]
+        The required type(s).
 
     Examples
     --------
@@ -89,14 +112,46 @@ class TypeValidationError(ValidationError):
         super().__init__() # call ValidationError constructor
 
     def format_message(self) -> str:
+        """Format a message describing the type mismatch.
+
+        Returns
+        -------
+        str
+            Human-readable error message.
+        """
         expected = "' or '".join(t.__name__ for t in (self.expected_type if isinstance(self.expected_type, tuple) else (self.expected_type,)))
         return f"Type '{type(self.value).__name__}' for value {self.value}, required '{expected}'."
 
 
 class RangeValidationError(ValidationError):
     """
-    Exception raised when a parameter is out of bounds (greater, less, greater or equal, less or
-    equal).
+    Exception raised when a parameter is out of bounds.
+
+    Parameters
+    ----------
+    value : Any
+        The value that fell outside the allowed range.
+    ge : float, optional
+        Minimum value (inclusive).
+    gt : float, optional
+        Minimum value (exclusive).
+    le : float, optional
+        Maximum value (inclusive).
+    lt : float, optional
+        Maximum value (exclusive).
+
+    Attributes
+    ----------
+    value : Any
+        The value that fell outside the allowed range.
+    ge : float, optional
+        Minimum value (inclusive).
+    gt : float, optional
+        Minimum value (exclusive).
+    le : float, optional
+        Maximum value (inclusive).
+    lt : float, optional
+        Maximum value (exclusive).
 
     Examples
     --------
@@ -114,6 +169,13 @@ class RangeValidationError(ValidationError):
         super().__init__() # call ValidationError constructor
 
     def format_message(self) -> str:
+        """Format a message listing the violated boundary constraints.
+
+        Returns
+        -------
+        str
+            Human-readable error message.
+        """
         constraints = [
             f"> {self.gt}" if self.gt is not None else None,
             f">= {self.ge}" if self.ge is not None else None,
@@ -128,12 +190,26 @@ class PatternValidationError(ValidationError):
     """
     Exception raised when a parameter does not match a regular expression.
 
+    Parameters
+    ----------
+    value : Any
+        The value that did not match the pattern.
+    pattern : str
+        Regular expression pattern that was expected.
+
+    Attributes
+    ----------
+    value : Any
+        The value that did not match the pattern.
+    pattern : str
+        Regular expression pattern that was expected.
+
     Examples
     --------
-    >>> raise PatternValidationError("abc", r"\d+")
+    >>> raise PatternValidationError("abc", r"\\d+")
     Traceback (most recent call last):
     ...
-    PatternValidationError: Value 'abc' does not match regex pattern '\d+'.
+    PatternValidationError: Value 'abc' does not match regex pattern '\\d+'.
     """
     def __init__(self, value: Any, pattern: str):
         self.value = value
@@ -141,12 +217,33 @@ class PatternValidationError(ValidationError):
         super().__init__() # call ValidationError constructor
 
     def format_message(self) -> str:
+        """Format a message showing the value and expected pattern.
+
+        Returns
+        -------
+        str
+            Human-readable error message.
+        """
         return f"Value '{self.value}' does not match regex pattern '{self.pattern}'."
 
 
 class OptionValidationError(ValidationError):
     """
     Exception raised when a parameter's value does not belong the allowed options.
+
+    Parameters
+    ----------
+    value : Any
+        The value that was not among the allowed options.
+    options : Set[Any]
+        The allowed values.
+
+    Attributes
+    ----------
+    value : Any
+        The value that was not among the allowed options.
+    options : Set[Any]
+        The allowed values.
 
     Examples
     --------
@@ -161,12 +258,33 @@ class OptionValidationError(ValidationError):
         super().__init__() # call ValidationError constructor
 
     def format_message(self) -> str:
+        """Format a message listing the allowed options.
+
+        Returns
+        -------
+        str
+            Human-readable error message.
+        """
         return f"Value '{self.value}' not among allowed options: {self.options}."
 
 
 class CustomValidationError(ValidationError):
     """
     Exception raised when a custom validation rule fails.
+
+    Parameters
+    ----------
+    value : Any
+        The value that did not pass the custom check.
+    func : Callable[[Any], bool]
+        The validation function that rejected the value.
+
+    Attributes
+    ----------
+    value : Any
+        The value that did not pass the custom check.
+    func : Callable[[Any], bool]
+        The validation function that rejected the value.
 
     Examples
     --------
@@ -183,6 +301,13 @@ class CustomValidationError(ValidationError):
         super().__init__() # call ValidationError constructor
 
     def format_message(self) -> str:
+        """Format a message naming the custom function that failed.
+
+        Returns
+        -------
+        str
+            Human-readable error message.
+        """
         func_name = self.func.__name__ if hasattr(self.func, "__name__") else repr(self.func)
         return f"Value {self.value} does not satisfy the custom validation function '{func_name}'."
 
@@ -192,6 +317,39 @@ class CustomValidationError(ValidationError):
 class RelationValidationError(ValidationError):
     """
     Exception raised when a relational validation rule fails (targets multiple parameters).
+
+    Parameters
+    ----------
+    func : Callable[..., bool]
+        Relational validation function that was not satisfied.
+    args : Iterable[Any], optional
+        Positional arguments passed to the function.
+    kwargs : Mapping[str, Any], optional
+        Keyword arguments passed to the function.
+
+    Attributes
+    ----------
+    func : Callable[..., bool]
+        Relational validation function that was not satisfied.
+    args : tuple
+        Positional arguments passed to the function.
+    kwargs : dict
+        Keyword arguments passed to the function.
+
+    Notes
+    -----
+    When possible, the function signature is retrieved to format the error message.
+    Otherwise, a fallback message is displayed.
+
+    Fallback message occurs when:
+
+    - Function parameters are positional-only but passed as keywords
+    - Function uses `*args`/`**kwargs`
+    - Signature inspection fails (e.g., built-in functions:, `len`, `max`...)
+    - Provided arguments count/names mismatch the function signature
+
+    The function's name is inferred from the `__name__` attribute if available, otherwise it uses
+    the `repr()` of the function. This is useful for lambda functions or functions without a name.
 
     Examples
     --------
@@ -211,21 +369,6 @@ class RelationValidationError(ValidationError):
     Traceback (most recent call last):
     ...
     RelationValidationError: Values do not satisfy the relation when calling `is_greater_than(x=1, y=2)`.
-
-    Notes
-    -----
-    When possible, the function signature is retrieved to format the error message.
-    Otherwise, a fallback message is displayed.
-
-    Fallback message occurs when:
-
-    - Function parameters are positional-only but passed as keywords
-    - Function uses `*args`/`**kwargs`
-    - Signature inspection fails (e.g., built-in functions:, `len`, `max`...)
-    - Provided arguments count/names mismatch the function signature
-
-    The function's name is inferred from the `__name__` attribute if available, otherwise it uses
-    the `repr()` of the function. This is useful for lambda functions or functions without a name.
     """
     def __init__(self, func: Callable[..., bool],
                  args: Optional[Iterable[Any]] = None,
@@ -236,6 +379,13 @@ class RelationValidationError(ValidationError):
         super().__init__() # call ValidationError constructor
 
     def format_message(self) -> str:
+        """Format a message binding the arguments to the function signature.
+
+        Returns
+        -------
+        str
+            Human-readable error message.
+        """
         func_name = self.func.__name__ if hasattr(self.func, "__name__") else repr(self.func)
         try:  # bind values to function signature
             bound_args = bind_function_arguments(self.func, *self.args, **self.kwargs)
@@ -280,6 +430,11 @@ class CheckError(ValidationError):
     """
     Exception raised when a validation check fails to execute, i.e. no outcome can be determined.
 
+    Parameters
+    ----------
+    exception : Exception
+        Original exception raised during the check execution.
+
     Attributes
     ----------
     exc : Exception
@@ -290,12 +445,30 @@ class CheckError(ValidationError):
         super().__init__()
 
     def format_message(self) -> str:
+        """Format a message wrapping the original exception.
+
+        Returns
+        -------
+        str
+            Human-readable error message.
+        """
         return f"Execution failed for validation check: {str(self.exception)}"
 
 
 class CompositeValidationError(ValidationError):
     """
     Exception raised when a composite validation rule (AndRule or OrRule) fails.
+
+    Parameters
+    ----------
+    errors : list
+        Individual errors from the sub-rules that failed.
+    operator : str
+        The logical operator ('AND' or 'OR').
+    value : Any, optional
+        The value that failed validation.
+    rule_ids : list[str], optional
+        Names of the rules that failed.
 
     Attributes
     ----------
@@ -322,6 +495,13 @@ class CompositeValidationError(ValidationError):
         super().__init__()
 
     def format_message(self) -> str:
+        """Format a message aggregating sub-rule failures.
+
+        Returns
+        -------
+        str
+            Human-readable error message.
+        """
         value_repr = repr(self.value) if self.value is not None else "value"
         if not self.errors:
             return f"Composite {self.operator} rule failed for {value_repr} with no specific errors."
@@ -333,6 +513,13 @@ class CompositeValidationError(ValidationError):
         )
 
     def to_dict(self) -> dict:
+        """Serialize the composite error to a dictionary.
+
+        Returns
+        -------
+        dict
+            Dictionary representation of the error.
+        """
         return {
             "operator": self.operator,
             "value": repr(self.value),
@@ -344,6 +531,11 @@ class CompositeValidationError(ValidationError):
 class GlobalValidationError(ValidationError):
     """
     Exception raised when at least one error occurred during the validation of multiple parameters.
+
+    Parameters
+    ----------
+    errors : Iterable[ValidationError]
+        Collection of individual validation errors.
 
     Attributes
     ----------
@@ -359,6 +551,13 @@ class GlobalValidationError(ValidationError):
         super().__init__()
 
     def format_message(self) -> str:
+        """Format a combined message from all individual errors.
+
+        Returns
+        -------
+        str
+            Human-readable error message.
+        """
         if not self.errors:
             return "No errors occurred."
         return "\n".join(str(error) for error in self.errors)
@@ -370,11 +569,20 @@ class RuleDeserializationError(ValidationError):
 
     Parameters
     ----------
-    rule_type : Optional[str]
-        Serialized rule type name, if available.
     reason : str
         Description of why deserialization failed.
-    payload : Optional[Mapping[str, Any]]
+    rule_type : str, optional
+        Serialized rule type name, if available.
+    payload : Mapping[str, Any], optional
+        Serialized data that could not be deserialized.
+
+    Attributes
+    ----------
+    reason : str
+        Description of why deserialization failed.
+    rule_type : str | None
+        Serialized rule type name, if available.
+    payload : dict | None
         Serialized data that could not be deserialized.
     """
 
@@ -390,5 +598,12 @@ class RuleDeserializationError(ValidationError):
         super().__init__()
 
     def format_message(self) -> str:
+        """Format a message identifying the rule type and failure reason.
+
+        Returns
+        -------
+        str
+            Human-readable error message.
+        """
         rule_label = self.rule_type or "<missing>"
         return f"Failed to deserialize validation rule '{rule_label}': {self.reason}"

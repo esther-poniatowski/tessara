@@ -19,6 +19,21 @@ class ParamComposer:
     """
     Merge a set of ParameterSets into a single ParameterSet.
 
+    Parameters
+    ----------
+    *args : ParameterSet
+        ParameterSets to compose, in the order of precedence. Since no name is provided, the
+        default names will be the indices of the sets in the list.
+    **kwargs : ParameterSet
+        ParameterSets to compose, identified by a unique name.
+
+    Raises
+    ------
+    TypeError
+        If the values are not ParameterSet instances.
+    ValueError
+        If the names of the parameter sets are not unique.
+
     Attributes
     ----------
     params : Dict[str, ParameterSet]
@@ -37,24 +52,6 @@ class ParamComposer:
         Compose the parameter sets into a single set.
     """
     def __init__(self, *args: ParameterSet, **kwargs: ParameterSet) -> None:
-        """
-        Initialize the composer with a set of parameter sets.
-
-        Arguments
-        ---------
-        args : ParameterSet
-            ParameterSets to compose, in the order of precedence. Since no name is provided, the
-            default names will be the indices of the sets in the list.
-        kwargs : ParameterSet
-            ParameterSets to compose, identified by a unique name.
-
-        Raises
-        ------
-        TypeError
-            If the values are not ParameterSet instances.
-        ValueError
-            If the names of the parameter sets are not unique.
-        """
         if not all(isinstance(p, ParameterSet) for p in args) or not all(
             isinstance(p, ParameterSet) for p in kwargs.values()
         ):

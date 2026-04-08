@@ -9,10 +9,12 @@ __version__ : str, default "0.0.0+unknown"
 __all__ : list
     Public objects exposed by this package.
 
-Functions
----------
-info() -> str
-    Format diagnostic information about the package and platform.
+See Also
+--------
+importlib.metadata.version
+    Function to retrieve the version of a package.
+PackageNotFoundError
+    Exception raised when the package is not found in the environment.
 
 Examples
 --------
@@ -22,12 +24,10 @@ To programmatically retrieve the package version:
     >>> tessara.__version__
     '0.1.0'
 
-See Also
---------
-importlib.metadata.version
-    Function to retrieve the version of a package.
-PackageNotFoundError
-    Exception raised when the package is not found in the environment.
+Functions
+---------
+info() -> str
+    Format diagnostic information about the package and platform.
 """
 from importlib.metadata import version, PackageNotFoundError
 import platform
@@ -43,5 +43,11 @@ __all__ = ["info", "__version__"]
 
 
 def info() -> str:
-    """Format diagnostic information on package and platform."""
+    """Format diagnostic information on package and platform.
+
+    Returns
+    -------
+    str
+        One-line summary of package name, version, OS, and Python version.
+    """
     return f"{__package__} {__version__} | Platform: {platform.system()} Python {platform.python_version()}"

@@ -18,11 +18,34 @@ ParameterNode = Param | ParamGrid | ParameterSet
 
 @dataclass(frozen=True)
 class ParameterTree:
-    """Facade for parameter-tree traversal and replacement operations."""
+    """Facade for parameter-tree traversal and replacement operations.
+
+    Attributes
+    ----------
+    root : ParameterSet
+        Top-level parameter set this tree wraps.
+    """
 
     root: ParameterSet
 
     def get_node(self, path: str) -> ParameterNode:
+        """Return the node at *path*, raising on missing segments.
+
+        Parameters
+        ----------
+        path : str
+            Dot-separated path to the target node.
+
+        Returns
+        -------
+        ParameterNode
+            The node found at the given path.
+
+        Raises
+        ------
+        UnknownParameterError
+            If *path* does not resolve to a known parameter.
+        """
         if "." not in path:
             if path not in self.root.data:
                 raise UnknownParameterError(f"No parameter '{path}' in the ParameterSet.")
@@ -33,6 +56,23 @@ class ParameterTree:
         return node
 
     def get_value(self, path: str) -> Any:
+        """Return the concrete value at *path*.
+
+        Parameters
+        ----------
+        path : str
+            Dot-separated path to the target parameter.
+
+        Returns
+        -------
+        Any
+            The resolved value of the parameter.
+
+        Raises
+        ------
+        UnknownParameterError
+            If *path* does not resolve to a parameter value.
+        """
         node = self.get_node(path)
         if isinstance(node, Param):
             return node.get()
@@ -45,6 +85,20 @@ class ParameterTree:
         params: ParameterSet | None = None,
         prefix: tuple[str, ...] = (),
     ) -> Iterator[tuple[str, ParameterNode]]:
+        """Yield ``(dotted_path, node)`` pairs for every leaf in the tree.
+
+        Parameters
+        ----------
+        params : ParameterSet or None, optional
+            Subtree to iterate. Defaults to ``self.root``.
+        prefix : tuple[str, ...], optional
+            Path segments accumulated so far.
+
+        Yields
+        ------
+        tuple[str, ParameterNode]
+            Dotted path and corresponding leaf node.
+        """
         current = params or self.root
         for key in sorted(current.data.keys()):
             node = current.data[key]
@@ -55,6 +109,15 @@ class ParameterTree:
                 yield path, node
 
     def replace_node(self, path: str, node: ParameterNode) -> None:
+        """Replace the node at *path* with *node*.
+
+        Parameters
+        ----------
+        path : str
+            Dot-separated path to the node to replace.
+        node : ParameterNode
+            New node to insert at the given path.
+        """
         parts = path.split(".")
         if len(parts) == 1:
             self.root.data[parts[0]] = node
@@ -66,6 +129,22 @@ class ParameterTree:
 
     @staticmethod
     def merge(original: ParameterSet, other: ParameterSet, override: bool = False) -> ParameterSet:
+        """Merge *other* into a copy of *original*, optionally overriding existing entries.
+
+        Parameters
+        ----------
+        original : ParameterSet
+            Base parameter set to copy.
+        other : ParameterSet
+            Parameter set whose entries are merged in.
+        override : bool, optional
+            If ``True``, entries in *other* overwrite existing keys. Default is ``False``.
+
+        Returns
+        -------
+        ParameterSet
+            A new parameter set containing the merged data.
+        """
         merged = original.copy()
         for name, node in other.data.items():
             if name not in merged.data or override:

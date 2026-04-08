@@ -6,6 +6,10 @@ Validation of parameters and parameter sets.
 
 TODO: Would a logging system be useful to track the validation process instead of the "handmade" report?
 
+Notes
+-----
+Individual rules can already validate values by themselves, which allows for testing in isolation.
+The Validator class is a higher-level component that aggregates the outcomes of multiple rules.
 
 Classes
 -------
@@ -15,11 +19,6 @@ Check
     Specification of a single validation check.
 Validator
     Validate input values against a set of rules.
-
-Notes
------
-Individual rules can already validate values by themselves, which allows for testing in isolation.
-The Validator class is a higher-level component that aggregates the outcomes of multiple rules.
 """
 from dataclasses import dataclass
 from typing import Any, List, Dict, Optional
@@ -94,8 +93,10 @@ class ValidationRecorder:
 
         Arguments
         ---------
-        rule, targets
-            See the corresponding attributes in the Check class.
+        rule : Rule
+            Rule instance that was checked.
+        targets : Targets
+            Parameter names involved in the check.
         error : ValidationError | CheckError | None
             Error object if the validation check failed.
             If None, the check passed successfully.
@@ -109,15 +110,33 @@ class ValidationRecorder:
         self.report.append(ReportEntry(rule.__class__.__name__, targets, success, message))
 
     def get_report(self) -> List[ReportEntry]:
-        """Retrieve the complete validation report."""
+        """Retrieve the complete validation report.
+
+        Returns
+        -------
+        List[ReportEntry]
+            All recorded report entries.
+        """
         return self.report
 
     def get_errors(self) -> List[ValidationError]:
-        """Retrieve only errors."""
+        """Retrieve only errors.
+
+        Returns
+        -------
+        List[ValidationError]
+            All collected validation errors.
+        """
         return self.errors
 
     def has_errors(self) -> bool:
-        """Signal if any errors occurred."""
+        """Signal if any errors occurred.
+
+        Returns
+        -------
+        bool
+            ``True`` if at least one error was recorded.
+        """
         return bool(self.errors)
 
 
@@ -129,6 +148,13 @@ class Checker:
 
     This layer serves to standardize the inputs and outputs of the validation process, so that they
     do not depend on the type of rule being checked (parameter-specific or relational).
+
+    Parameters
+    ----------
+    rule : Rule
+        Rule to apply.
+    targets : Targets
+        Parameter names involved in the check.
 
     Attributes
     ----------
@@ -164,7 +190,7 @@ class Checker:
 
         Arguments
         ---------
-        param : ParameterSet
+        params : ParameterSet
             Set of parameters to validate, containing Param instances named as the targets.
 
         Returns
@@ -212,6 +238,13 @@ class Validator:
     Validate input values against a set of rules.
 
     Input values are fixed while several rules can be checked against them.
+
+    Parameters
+    ----------
+    params : ParameterSet
+        Set of parameters to validate.
+    strict : bool, default False
+        When ``True``, raise ``GlobalValidationError`` on any failure.
 
     Attributes
     ----------
@@ -290,6 +323,11 @@ class Validator:
             argument if both are provided.
         exclude : Iterable[Rule]
             Rule types to exclude from the checks, if the ``only`` argument is not provided.
+
+        Returns
+        -------
+        List[Checker]
+            Filtered checks.
         """
         if include_only:
             return [chk for chk in checks if chk.rule in include_only]
@@ -310,6 +348,13 @@ class Validator:
         4. Execute the rule on the target values and catch the outcome.
         5. Aggregate the outcomes of the rules in the report and the error stack.
         6. Determine the global validation status (True if all rules passed).
+
+        Parameters
+        ----------
+        include_only : Iterable[Rule], optional
+            Rule types to include exclusively.
+        exclude : Iterable[Rule], optional
+            Rule types to exclude.
 
         Returns
         -------

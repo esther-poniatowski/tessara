@@ -11,8 +11,8 @@ Targets
 RelationRule
     Tuple of a multi-value rule and its targets.
 
-Protocols
----------
+Classes
+-------
 RuleProtocol
     Structural protocol for validation rules used by core parameter classes.
 MultiValueRuleProtocol
@@ -42,11 +42,23 @@ class RuleProtocol(Protocol):
     """
 
     def check(self, value: Any) -> bool:
-        """Return True if *value* satisfies the rule."""
+        """Return ``True`` if *value* satisfies the rule.
+
+        Parameters
+        ----------
+        value : Any
+            Value to validate.
+        """
         ...
 
     def get_error(self, value: Any) -> Exception | None:
-        """Return an error if *value* fails, otherwise None."""
+        """Return an error if *value* fails, otherwise ``None``.
+
+        Parameters
+        ----------
+        value : Any
+            Value to validate.
+        """
         ...
 
 
@@ -55,9 +67,27 @@ class MultiValueRuleProtocol(Protocol):
     """Structural protocol for multi-value (relational) validation rules."""
 
     def check(self, *args: Any, **kwargs: Any) -> bool:
+        """Return ``True`` if the relational constraint holds.
+
+        Parameters
+        ----------
+        *args : Any
+            Positional values to check.
+        **kwargs : Any
+            Keyword values to check.
+        """
         ...
 
     def get_error(self, *args: Any, **kwargs: Any) -> Exception | None:
+        """Return an error if the relation fails, otherwise ``None``.
+
+        Parameters
+        ----------
+        *args : Any
+            Positional values to check.
+        **kwargs : Any
+            Keyword values to check.
+        """
         ...
 
 
@@ -66,9 +96,23 @@ class RuleRegistryProtocol(Protocol):
     """Structural protocol for rule registries used in serialization."""
 
     def serialize(self, rule: Any) -> Dict[str, Any]:
+        """Serialize a rule instance to a dictionary.
+
+        Parameters
+        ----------
+        rule : Any
+            Rule instance to serialize.
+        """
         ...
 
     def deserialize(self, data: Dict[str, Any]) -> Any:
+        """Reconstruct a rule instance from a dictionary.
+
+        Parameters
+        ----------
+        data : Dict[str, Any]
+            Serialized rule payload.
+        """
         ...
 
 
