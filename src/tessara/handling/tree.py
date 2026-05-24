@@ -18,15 +18,10 @@ ParameterNode = Param | ParamGrid | ParameterSet
 
 @dataclass(frozen=True)
 class ParameterTree:
-    """Facade for parameter-tree traversal and replacement operations.
-
-    Attributes
-    ----------
-    root : ParameterSet
-        Top-level parameter set this tree wraps.
-    """
+    """Facade for parameter-tree traversal and replacement operations."""
 
     root: ParameterSet
+    """Top-level parameter set this tree wraps."""
 
     def get_node(self, path: str) -> ParameterNode:
         """Return the node at *path*, raising on missing segments.

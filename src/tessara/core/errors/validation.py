@@ -1,22 +1,4 @@
-"""
-tessara.errors.validation
-=========================
-
-Custom exceptions raised during the validation of parameters.
-
-Classes
--------
-ValidationError
-TypeValidationError
-RangeValidationError
-PatternValidationError
-OptionValidationError
-CustomValidationError
-RelationValidationError
-CompositeValidationError
-CheckError
-GlobalValidationError
-"""
+"""Custom exceptions raised during the validation of parameters."""
 from collections.abc import Mapping, Iterable, Set
 import inspect
 from typing import Optional, Any, Callable
@@ -32,18 +14,6 @@ class ValidationError(Exception):
     ----------
     message : str, optional
         Explicit error message. When ``None``, ``format_message`` is called.
-
-    Attributes
-    ----------
-    message : str
-        Error message to display if the rule fails. Default: empty string.
-    args : tuple
-        Arguments passed to the constructor of the base Exception class.
-
-    Methods
-    -------
-    format_message() -> str
-        Format an error message to display if the rule fails.
 
     See Also
     --------
@@ -77,13 +47,6 @@ class TypeValidationError(ValidationError):
     Exception raised when a parameter has an invalid type.
 
     Parameters
-    ----------
-    value : Any
-        The value that failed type validation.
-    expected_type : type | tuple[type]
-        The required type(s).
-
-    Attributes
     ----------
     value : Any
         The value that failed type validation.
@@ -140,19 +103,6 @@ class RangeValidationError(ValidationError):
     lt : float, optional
         Maximum value (exclusive).
 
-    Attributes
-    ----------
-    value : Any
-        The value that fell outside the allowed range.
-    ge : float, optional
-        Minimum value (inclusive).
-    gt : float, optional
-        Minimum value (exclusive).
-    le : float, optional
-        Maximum value (inclusive).
-    lt : float, optional
-        Maximum value (exclusive).
-
     Examples
     --------
     >>> raise RangeValidationError(5, ge=10)
@@ -197,13 +147,6 @@ class PatternValidationError(ValidationError):
     pattern : str
         Regular expression pattern that was expected.
 
-    Attributes
-    ----------
-    value : Any
-        The value that did not match the pattern.
-    pattern : str
-        Regular expression pattern that was expected.
-
     Examples
     --------
     >>> raise PatternValidationError("abc", r"\\d+")
@@ -238,13 +181,6 @@ class OptionValidationError(ValidationError):
     options : Set[Any]
         The allowed values.
 
-    Attributes
-    ----------
-    value : Any
-        The value that was not among the allowed options.
-    options : Set[Any]
-        The allowed values.
-
     Examples
     --------
     >>> raise OptionValidationError("A", ["B", "C"])
@@ -273,13 +209,6 @@ class CustomValidationError(ValidationError):
     Exception raised when a custom validation rule fails.
 
     Parameters
-    ----------
-    value : Any
-        The value that did not pass the custom check.
-    func : Callable[[Any], bool]
-        The validation function that rejected the value.
-
-    Attributes
     ----------
     value : Any
         The value that did not pass the custom check.
@@ -327,15 +256,6 @@ class RelationValidationError(ValidationError):
     kwargs : Mapping[str, Any], optional
         Keyword arguments passed to the function.
 
-    Attributes
-    ----------
-    func : Callable[..., bool]
-        Relational validation function that was not satisfied.
-    args : tuple
-        Positional arguments passed to the function.
-    kwargs : dict
-        Keyword arguments passed to the function.
-
     Notes
     -----
     When possible, the function signature is retrieved to format the error message.
@@ -344,9 +264,9 @@ class RelationValidationError(ValidationError):
     Fallback message occurs when:
 
     - Function parameters are positional-only but passed as keywords
-    - Function uses `*args`/`**kwargs`
-    - Signature inspection fails (e.g., built-in functions:, `len`, `max`...)
-    - Provided arguments count/names mismatch the function signature
+    - Function uses ``*args`` / ``**kwargs``
+    - Signature inspection fails (e.g., built-in functions, ``len``, ``max``...)
+    - Provided arguments count or names mismatch the function signature
 
     The function's name is inferred from the `__name__` attribute if available, otherwise it uses
     the `repr()` of the function. This is useful for lambda functions or functions without a name.
@@ -411,12 +331,8 @@ def bind_function_arguments(func: Callable[..., bool], *args, **kwargs) -> inspe
     Returns
     -------
     inspect.BoundArguments
-        Bound arguments to the function signature.
-        Attributes:
-            - `args` (tuple): Positional arguments
-            - `kwargs` (dict): Keyword arguments.
-            - `arguments` (dict): Combined arguments (positional and keyword).
-            - `signature` (inspect.Signature): Function signature.
+        Bound arguments to the function signature, exposing ``args``,
+        ``kwargs``, ``arguments``, and ``signature``.
     """
     sig = inspect.signature(func)
     bound_args = sig.bind(*args, **kwargs)
@@ -433,11 +349,6 @@ class CheckError(ValidationError):
     Parameters
     ----------
     exception : Exception
-        Original exception raised during the check execution.
-
-    Attributes
-    ----------
-    exc : Exception
         Original exception raised during the check execution.
     """
     def __init__(self, exception: Exception):
@@ -468,17 +379,6 @@ class CompositeValidationError(ValidationError):
     value : Any, optional
         The value that failed validation.
     rule_ids : list[str], optional
-        Names of the rules that failed.
-
-    Attributes
-    ----------
-    errors : List[ValidationError]
-        Individual errors from the sub-rules that failed.
-    operator : str
-        The logical operator ('AND' or 'OR').
-    value : Any
-        The value that failed validation.
-    rule_ids : List[str]
         Names of the rules that failed.
     """
     def __init__(
@@ -537,11 +437,6 @@ class GlobalValidationError(ValidationError):
     errors : Iterable[ValidationError]
         Collection of individual validation errors.
 
-    Attributes
-    ----------
-    errors : Iterable[ValidationError]
-        Collection of individual validation errors.
-
     Notes
     -----
     The global message is a concatenation of all individual error messages.
@@ -574,15 +469,6 @@ class RuleDeserializationError(ValidationError):
     rule_type : str, optional
         Serialized rule type name, if available.
     payload : Mapping[str, Any], optional
-        Serialized data that could not be deserialized.
-
-    Attributes
-    ----------
-    reason : str
-        Description of why deserialization failed.
-    rule_type : str | None
-        Serialized rule type name, if available.
-    payload : dict | None
         Serialized data that could not be deserialized.
     """
 

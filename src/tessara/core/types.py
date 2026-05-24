@@ -1,25 +1,4 @@
-"""
-tessara.core.types
-==================
-
-Shared type definitions for the tessara framework.
-
-Type Aliases
-------------
-Targets
-    Specification of target parameters by name (list or mapping).
-RelationRule
-    Tuple of a multi-value rule and its targets.
-
-Classes
--------
-RuleProtocol
-    Structural protocol for validation rules used by core parameter classes.
-MultiValueRuleProtocol
-    Structural protocol for multi-value validation rules.
-RuleRegistryProtocol
-    Structural protocol for rule registries used for serialization.
-"""
+"""Shared type definitions for the tessara framework."""
 from collections.abc import Iterable, Mapping
 from typing import Any, Dict, List, Protocol, Tuple, TypeAlias, runtime_checkable
 
@@ -27,7 +6,7 @@ from typing import Any, Dict, List, Protocol, Tuple, TypeAlias, runtime_checkabl
 # --- Type Aliases ---------------------------------------------------------------------------------
 
 Targets: TypeAlias = Iterable[str] | Mapping[str, str]
-"""Specification of target parameters by name: list of strings or mapping of strings."""
+"""Specification of target parameters by name, as either a list of strings or a mapping of strings."""
 
 
 # --- Protocols ------------------------------------------------------------------------------------

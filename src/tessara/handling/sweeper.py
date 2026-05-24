@@ -1,14 +1,4 @@
-"""
-tessara.handling.sweeper
-========================
-
-Parameter sweep generation over grids.
-
-Classes
--------
-ParamSweeper
-    Sweep over a grid of parameters with iterator/generator support.
-"""
+"""Parameter sweep generation over grids."""
 from itertools import product
 from typing import Any, List, Iterator, Generator
 
@@ -28,22 +18,6 @@ class ParamSweeper:
     ----------
     params : ParameterSet
         Parameter set containing both static Params and ParamGrid objects.
-
-    Attributes
-    ----------
-    params : ParameterSet
-        Parameter set containing both static Params and ParamGrid objects.
-
-    Methods
-    -------
-    generate() -> Generator[ParameterSet, None, None]
-        Lazily generate parameter combinations one at a time.
-    generate_all() -> List[ParameterSet]
-        Eagerly generate all parameter combinations as a list.
-    __iter__() -> Iterator[ParameterSet]
-        Make the sweeper iterable (uses generate()).
-    __len__() -> int
-        Return the total number of combinations.
 
     Notes
     -----

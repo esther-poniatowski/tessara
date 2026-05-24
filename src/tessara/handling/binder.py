@@ -1,14 +1,4 @@
-"""
-tessara.handling.binder
-=======================
-
-Parameter binding to function signatures.
-
-Classes
--------
-ParamBinder
-    Bind parameters to a function signature.
-"""
+"""Parameter binding to function signatures."""
 import inspect
 from typing import Any, Callable
 
@@ -23,18 +13,6 @@ class ParamBinder:
     ----------
     params : ParameterSet
         Parameters to bind to a function signature.
-
-    Attributes
-    ----------
-    params : ParameterSet
-        Parameters to bind to a function signature.
-
-    Methods
-    -------
-    query(func: Callable) -> inspect.BoundArguments
-        Query the parameters based on a function signature.
-    call(func: Callable) -> Any
-        Call a function with the parameters matching its signature.
     """
     def __init__(self, params: ParameterSet) -> None:
         self.params = params

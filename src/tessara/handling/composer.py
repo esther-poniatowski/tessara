@@ -1,14 +1,4 @@
-"""
-tessara.handling.composer
-=========================
-
-Parameter set composition and merging.
-
-Classes
--------
-ParamComposer
-    Merge a set of ParameterSets into a single ParameterSet.
-"""
+"""Parameter set composition and merging."""
 from typing import List
 
 from tessara.core.parameters import ParameterSet
@@ -33,23 +23,6 @@ class ParamComposer:
         If the values are not ParameterSet instances.
     ValueError
         If the names of the parameter sets are not unique.
-
-    Attributes
-    ----------
-    params : Dict[str, ParameterSet]
-        ParameterSets to compose, each identified by a unique name.
-    precedence : List[str]
-        Order of precedence for the parameters (by name), which determines the overriding order.
-        If A occurs *after* B in the list, then the parameters in A will *override* the ones in B.
-
-    Methods
-    -------
-    set_precedence(precedence: List[str])
-        Set the order of precedence for the parameters.
-    merge(original, other, override=False) -> ParameterSet
-        (Static method) Merge two parameter sets.
-    compose() -> ParameterSet
-        Compose the parameter sets into a single set.
     """
     def __init__(self, *args: ParameterSet, **kwargs: ParameterSet) -> None:
         if not all(isinstance(p, ParameterSet) for p in args) or not all(

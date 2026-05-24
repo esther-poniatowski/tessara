@@ -1,29 +1,10 @@
-"""
-tessara.core.parameters
-=======================
+"""Core parameter management classes for defining, validating, and organizing parameters.
 
-Core parameter management classes for defining, validating, and organizing parameters.
-
-Notes
------
-- Parameters support validation rules via the `rules` attribute
-- Nested ParameterSets can be accessed using dot notation (e.g., ``params.model.lr``)
-- Values can be set with optional strict validation via ``param.set(value, strict=True)``
-- Use ``param.is_set`` to distinguish between "not set" and "explicitly set to None"
-
-Classes
--------
-Param
-    Define a parameter with properties and constraints for runtime validation.
-ParamGrid
-    Define a parameter representing a sweep over multiple values.
-ParameterSet
-    Manage a collection of parameters with dot notation access.
-
-Functions
----------
-resolve_path
-    Traverse a nested ParameterSet structure using a dot-separated path.
+Parameters support validation rules via the ``rules`` attribute. Nested
+``ParameterSet`` objects can be accessed using dot notation (e.g.
+``params.model.lr``). Values can be set with optional strict validation via
+``param.set(value, strict=True)``. Use ``param.is_set`` to distinguish between
+"not set" and "explicitly set to None".
 """
 from collections import UserDict
 from collections.abc import Generator, Iterable
@@ -76,15 +57,10 @@ _UNSET = _Unset()
 
 @dataclass(frozen=True)
 class SweepMaterializationPolicy:
-    """Policy controlling how sweep candidates become concrete Param objects.
-
-    Attributes
-    ----------
-    strict : bool
-        Whether to validate values during materialization.
-    """
+    """Policy controlling how sweep candidates become concrete Param objects."""
 
     strict: bool = True
+    """Whether to validate values during materialization."""
 
 
 # --- Path Resolution Utility ---------------------------------------------------------------------
@@ -141,24 +117,6 @@ class Param:
         Default value for the parameter.
     rules : Iterable[RuleProtocol], optional
         Initial validation rules.
-
-    Attributes
-    ----------
-    value : Any
-        Value set at runtime.
-    default : Any
-        Default value for the parameter.
-    rules : List[RuleProtocol]
-        Rules (constraints) to validate the parameter value.
-
-    Methods
-    -------
-    set(value: Any)
-        Set parameter value at runtime with optional validation.
-    get() -> Any
-        Retrieve the set value or default.
-    register_rule(rule: RuleProtocol)
-        Register a rule to validate the parameter.
 
     Notes
     -----
@@ -417,20 +375,6 @@ class ParameterSet(UserDict[str, Param]):
         Keyword arguments to initialize the parameter set.
         If the values are not Param objects, they will be converted to Param objects and the
         provided value will serve as the 'default' attribute of the Param object.
-
-    Attributes
-    ----------
-    data : Dict[str, Param]
-        Underlying dictionary of parameters, inherited from UserDict.
-
-    Methods
-    -------
-    get(name) -> Any
-        Retrieve the *value* (not the Param object) of a parameter by name.
-    get_value(name) -> Any
-        Retrieve a parameter value by name, supporting dot notation.
-    set(name, value)
-        Set the value of an existing parameter by name (supports dot notation).
 
     Notes
     -----
@@ -914,20 +858,6 @@ class ParamGrid:
         Values over which the parameter should be swept.
     policy : SweepMaterializationPolicy, optional
         Policy controlling how sweep candidates become concrete Param objects.
-
-    Attributes
-    ----------
-    param : Param
-        Underlying parameter that defines validation rules.
-    sweep_values : List[Any]
-        Values over which the parameter should be swept.
-
-    Methods
-    -------
-    generate_params() -> Iterable[Param]
-        Generate individual ``Param`` instances for each sweep value.
-    register_rule(rule: RuleProtocol)
-        Delegate rule registration to the underlying ``Param`` instance.
 
     Examples
     --------

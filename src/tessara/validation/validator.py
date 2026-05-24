@@ -1,24 +1,7 @@
-"""
-tessara.validation.validator
-============================
+"""Validation of parameters and parameter sets.
 
-Validation of parameters and parameter sets.
-
-TODO: Would a logging system be useful to track the validation process instead of the "handmade" report?
-
-Notes
------
-Individual rules can already validate values by themselves, which allows for testing in isolation.
-The Validator class is a higher-level component that aggregates the outcomes of multiple rules.
-
-Classes
--------
-ReportEntry
-    Representation of a single validation report entry.
-Check
-    Specification of a single validation check.
-Validator
-    Validate input values against a set of rules.
+Individual rules can validate values in isolation. The ``Validator`` class is a
+higher-level component that aggregates the outcomes of multiple rules.
 """
 from dataclasses import dataclass
 from typing import Any, List, Dict, Optional
@@ -38,39 +21,25 @@ Values = List[Any] | Dict[str, Any]
 
 @dataclass
 class ReportEntry:
-    """
-    Representation of a single validation report entry.
+    """Representation of a single validation report entry."""
 
-    Attributes
-    ----------
-    rule : str
-        Name of the rule that was checked.
-    targets : Targets
-        Specification of the parameter(s) to validate, by their names in the ParameterSet instance.
-    success : bool
-        Outcome of the validation process.
-        If True, the check passed successfully.
-        If False, the check failed.
-        If None, the check could not complete (e.g. error in rule execution).
-    message : str
-        Error message if the validation failed.
-    """
     rule: str
+    """Name of the rule that was checked."""
+
     targets: Targets
+    """Specification of the parameter(s) to validate, by their names in the ParameterSet instance."""
+
     success: Optional[bool] = None
+    """Outcome of the validation process. ``True`` if the check passed,
+    ``False`` if it failed, ``None`` if it could not complete."""
+
     message: str = ""
+    """Error message if the validation failed."""
 
 
 class ValidationRecorder:
     """
     Handle validation reports and error aggregation separately from validation execution.
-
-    Attributes
-    ----------
-    report : List[ReportEntry]
-        Report of the validation process, aggregating outcomes across checks.
-    errors : List[ValidationError]
-        Stack of errors collected across all checks (validation and execution errors).
 
     See Also
     --------
@@ -78,7 +47,7 @@ class ValidationRecorder:
         Representation of a single validation report entry.
     ValidationError
         Base class for all validation errors.
-    Rule.get_error(*args, **kwargs) -> ValidationError | None
+    Rule.get_error
         Method to generate the output of a rule check.
     """
     SUCCESS_FLAG = "PASSED"
@@ -155,20 +124,6 @@ class Checker:
         Rule to apply.
     targets : Targets
         Parameter names involved in the check.
-
-    Attributes
-    ----------
-    rule : Rule
-        Rule to apply (instance of the Rule subclass).
-    targets : Targets
-        Specification of the parameter(s) to validate by their names in the ParameterSet instance.
-
-    Methods
-    -------
-    bind_targets(params: ParameterSet) -> Values
-        Retrieve the target values from the ParameterSet instance.
-    check(params: ParameterSet) -> ValidationError | None
-        Perform a single check of input values against a rule.
     """
     ARGS_MODE = "args"
     KWARGS_MODE = "kwargs"
@@ -225,7 +180,7 @@ class Checker:
 
         See Also
         --------
-        Rule.get_error(*args, **kwargs) -> ValidationError | None
+        Rule.get_error
             Method to generate the output of a rule check.
         """
         values = self.bind_targets(params)
@@ -245,25 +200,6 @@ class Validator:
         Set of parameters to validate.
     strict : bool, default False
         When ``True``, raise ``GlobalValidationError`` on any failure.
-
-    Attributes
-    ----------
-    params : ParameterSet
-        Set of parameters to validate.
-    strict : bool
-        Flag to enable strict mode, which determines the severity of the checks.
-        In strict mode, any rule failure will raise a GlobalValidationError at the end of the
-        validation process.
-        In non-strict mode, the validation simply collects all errors in the report.
-
-    Methods
-    -------
-    init_checks() -> List[Checker]
-        Determine all checks to perform on the parameters.
-    filter(checks, include_only, exclude) -> List[Checker]
-        Filter the checks to perform on the parameters based on the rule type.
-    validate() -> bool
-        Execute the full validation process over a set of parameters and rules.
 
     See Also
     --------

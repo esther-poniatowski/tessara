@@ -1,66 +1,8 @@
-"""
-tessara.validation.rules
-========================
+"""Validation rules for the parameters.
 
-Validation rules for the parameters.
-
-Key Features:
-
-- Flexible Validation: Rules can be applied to single values or multiple values, depending on the
-  rule type.
-- Custom Error Messages: Each rule generates appropriate error messages when validation fails.
-- Extensibility: New rule types can be added by subclassing the base rule classes.
-
-Usage
------
-1. Define a specific constraint by instantiating the appropriate rule class:
-
->>> type_rule = TypeRule(int)
->>> range_rule = RangeRule(gt=0, lt=10)
-
-2. Apply the rule to a value by calling the `check` method with the value as an argument:
-
->>> type_rule('abc')
-False
->>> range_rule(5)
-True
-
-3. If necessary, retrieve the corresponding error indicating the status og the validation:
-
->>> error = type_rule.get_error('abc')
->>> print(error.message)
-"Type 'str' for value 'abc', required 'int'."
-
-Notes
------
-TODO: Are the method names well chosen ?
-
-TODO: Implement composite validation, use logical operators to combine rules::
-
-    composite_rule = AndRule(
-        RangeRule(0, 100),
-        TypeRule(float),
-        OrRule(EvenNumberRule(), PrimeNumberRule())
-    )
-
-Classes
--------
-Rule
-    Base class for all validation rules.
-SingleValueRule
-    Base class for rules checking the validity of a single value.
-TypeRule
-    Rule checking if a value is of a specific type.
-RangeRule
-    Rule checking if a value is within a range.
-PatternRule
-    Rule checking if a value matches a regular expression pattern.
-OptionRule
-    Rule checking if a value is in a set of allowed options.
-CustomRule
-    Rule checking if a value passes a custom validation function.
-MultiValueRule
-    Rule checking a relationship between multiple parameters.
+Rules can be applied to single values or to multiple values, depending on the
+rule type. Each rule generates an appropriate error when validation fails. New
+rule types can be added by subclassing the base rule classes.
 """
 
 from abc import ABC, abstractmethod
@@ -96,19 +38,6 @@ class Rule(ABC, Generic[E]):
     Base class for all validation rules.
 
     Subclasses should implement the `__call__` method to perform the validation check.
-
-    Attributes
-    ----------
-
-    Methods
-    -------
-    check(*values) -> bool
-        (Abstract) Check the validity of input values. To be implemented in subclasses.
-    get_error(value) -> ValidationError | None
-        Generate the output of a rule check for specific value(s).
-        If the rule is satisfied, the error remains None.
-        Otherwise, it provides context about the failure (input values, constraints, etc.)
-        encapsulated in the specific error class associated with this rule.
 
     See Also
     --------
@@ -222,11 +151,6 @@ class UnknownRule(Rule[ValidationError]):
     ----------
     payload : Dict[str, Any]
         Original serialized data that could not be resolved.
-
-    Attributes
-    ----------
-    payload : Dict[str, Any]
-        Stored serialized data for round-tripping.
     """
 
     def __init__(self, payload: Dict[str, Any]):
@@ -463,13 +387,6 @@ class TypeRule(SingleValueRule[TypeValidationError]):
     TypeError
         If the expected type is not a type or a tuple of types.
 
-    Attributes
-    ----------
-    expected_type : type | tuple[type]
-        Required type(s) for the value.
-        If a tuple is provided, the value must be one of the types in the tuple.
-        Each type can be a built-in Python type or a custom class.
-
     See Also
     --------
     TypeValidationError
@@ -576,12 +493,6 @@ class RangeRule(SingleValueRule[RangeValidationError]):
         Maximum value (inclusive).
     lt : float, optional
         Maximum value (exclusive).
-
-    Attributes
-    ----------
-    ge, lt, le, gt : Optional[float]
-        Range boundaries for the parameter value (greater or equal, less than, less or equal,
-        greater).
 
     See Also
     --------
@@ -694,11 +605,6 @@ class PatternRule(SingleValueRule[PatternValidationError]):
     ValueError
         If the pattern is not a valid regular expression.
 
-    Attributes
-    ----------
-    pattern : str
-        Regular expression pattern to match, if the parameter value is a string.
-
     See Also
     --------
     PatternValidationError
@@ -786,11 +692,6 @@ class OptionRule(SingleValueRule[OptionValidationError]):
     options : Iterable
         Allowed values for the parameter.
 
-    Attributes
-    ----------
-    options : Set[Any]
-        Allowed values for the parameter.
-
     See Also
     --------
     OptionValidationError
@@ -869,11 +770,6 @@ class CustomRule(SingleValueRule[CustomValidationError]):
     Rule checking if a value passes a custom validation function.
 
     Parameters
-    ----------
-    func : Callable[[Any], bool]
-        Custom validation function. It should take a single argument (value) and return a boolean.
-
-    Attributes
     ----------
     func : Callable[[Any], bool]
         Custom validation function. It should take a single argument (value) and return a boolean.
@@ -978,11 +874,6 @@ class AndRule(SingleValueRule[CompositeValidationError]):
     Parameters
     ----------
     *rules : SingleValueRule
-        Sub-rules that must all pass.
-
-    Attributes
-    ----------
-    rules : List[SingleValueRule]
         Sub-rules that must all pass.
 
     Examples
@@ -1094,11 +985,6 @@ class OrRule(SingleValueRule[CompositeValidationError]):
     Parameters
     ----------
     *rules : SingleValueRule
-        Sub-rules where at least one must pass.
-
-    Attributes
-    ----------
-    rules : List[SingleValueRule]
         Sub-rules where at least one must pass.
 
     Examples
@@ -1216,12 +1102,6 @@ class MultiValueRule(Rule[RelationValidationError]):
     Parameters
     ----------
     func : Callable[..., bool]
-        Function which takes several values, checks a relationship between them, and returns a
-        boolean.
-
-    Attributes
-    ----------
-    func : Callable
         Function which takes several values, checks a relationship between them, and returns a
         boolean.
 

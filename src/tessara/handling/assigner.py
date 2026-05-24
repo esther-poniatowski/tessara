@@ -1,16 +1,4 @@
-"""
-tessara.handling.assigner
-=========================
-
-Parameter assignment from configuration sources.
-
-Classes
--------
-Config
-    Protocol for configuration objects used to pass runtime values to the parameters.
-ParamAssigner
-    Assign specific values to a set of parameters.
-"""
+"""Parameter assignment from configuration sources."""
 from pathlib import Path
 from typing import Any, List, Protocol, Union
 
@@ -25,15 +13,6 @@ class Config(Protocol):
     Protocol for configuration objects used to pass runtime values to the parameters.
 
     Provide a dictionary-like interface to access configuration values.
-
-    Methods
-    -------
-    keys() -> List[str]
-        Return the keys of the configuration object.
-    __getitem__(key: str) -> Any
-        Get the value of a configuration key.
-    __contains__(key: str) -> bool
-        Check if a key is present in the configuration object.
     """
     def keys(self) -> List[str]:
         """Return the configuration keys."""
@@ -260,22 +239,6 @@ class ParamAssigner:
     ----------
     params : ParameterSet
         Parameters to bind to a configuration.
-
-    Attributes
-    ----------
-    params : ParameterSet
-        Parameters to bind to a configuration.
-
-    Methods
-    -------
-    set(name: str, value: Any)
-        Set the value of an existing parameter by its name.
-    apply_config(config: Config)
-        Apply runtime configuration values to the parameters.
-    from_yaml(path: str | Path) -> ParamAssigner
-        Load configuration from a YAML file.
-    from_dict(data: dict) -> ParamAssigner
-        Apply configuration from a dictionary.
 
     Examples
     --------

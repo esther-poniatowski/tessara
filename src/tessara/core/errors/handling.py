@@ -1,15 +1,4 @@
-"""
-tessara.errors.handling
-=======================
-
-Custom exceptions raised during parameter manipulation.
-
-Classes
--------
-MissingValueError
-OverrideParameterError
-UnknownParameterError
-"""
+"""Custom exceptions raised during parameter manipulation."""
 
 from tessara.core.errors.validation import ValidationError
 
