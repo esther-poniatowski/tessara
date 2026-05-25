@@ -4,12 +4,12 @@
 # (index.md, guide/, internals/, adr/) is hand-written Markdown and not
 # part of the Sphinx build.
 #
-# Source root: src/        (API entry points: index.md + automodule stubs)
+# Source root: _src/       (API entry points: index.md + automodule stubs)
 # Output:      api/        (generated Markdown, committed to git)
 # Cache:       _build/     (gitignored)
 
 SPHINXBUILD := sphinx-build
-SOURCEDIR   := src
+SOURCEDIR   := _src
 APIDIR      := api
 BUILDDIR    := _build
 

@@ -13,7 +13,7 @@ import os
 import sys
 
 # Add source directory to path for autodoc.
-# This file lives at docs/src/conf.py; the package is at ../../src.
+# This file lives at docs/_src/conf.py; the package is at ../../src.
 sys.path.insert(0, os.path.abspath("../../src"))
 
 # -- Project information -----------------------------------------------------
