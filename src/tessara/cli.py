@@ -14,6 +14,11 @@ cli_info
     Display version and platform diagnostics.
 main_callback
     Root command for the package command-line interface.
+
+Notes
+-----
+The options follow the command-line conventions of the workspace: `-v`, `--version` prints the
+version, and a usage error exits with status 2.
 """
 
 import typer
@@ -28,10 +33,28 @@ def cli_info() -> None:
     typer.echo(info())
 
 
+def _print_version(value: bool) -> None:
+    """Print the version string and exit before any command is required.
+
+    Parameters
+    ----------
+    value : bool
+        Whether the option `-v`, `--version` is present.
+    """
+    if value:
+        typer.echo(__version__)
+        raise typer.Exit()
+
+
 @app.callback()
 def main_callback(
     version: bool = typer.Option(
-        False, "--version", "-v", help="Show the package version and exit."
+        False,
+        "--version",
+        "-v",
+        callback=_print_version,
+        is_eager=True,
+        help="Show the package version and exit.",
     )
 ) -> None:
     """Root command for the package command-line interface.
@@ -39,8 +62,5 @@ def main_callback(
     Parameters
     ----------
     version : bool
-        Print the version string and exit.
+        Print the version string and exit; handled eagerly by `_print_version`.
     """
-    if version:
-        typer.echo(__version__)
-        raise typer.Exit()
